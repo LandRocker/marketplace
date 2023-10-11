@@ -1,0 +1,75 @@
+// SPDX-License-Identifier: GPL-3.0
+pragma solidity 0.8.6;
+
+/**
+ * @title ILRTDistributor Interface
+ * @dev Interface for a contract that distributes LRT tokens from various pools
+ */
+interface ILRTDistributor {
+    /**
+     * @dev Emitted when tokens are distributed from a pool to an address
+     * @param poolName Name of the distribution pool
+     * @param _amount Amount of tokens distributed
+     * @param _to Recipient address
+     */
+    event TokenDistributed(bytes32 poolName, uint256 _amount, address _to);
+
+    /**
+     * @dev Emitted when tokens are swapped from the "Game" pool to an address
+     * @param _to Recipient address
+     * @param _amount Amount of tokens swapped
+     */
+    event TokenSwapped(address _to, uint256 _amount);
+
+    /**
+     * @dev Emitted when liquidity is transferred between pools
+     * @param _fromPoolName Source pool name
+     * @param _destPoolName Destination pool name
+     * @param _amount Amount of liquidity transferred
+     */
+    event TransferredLiquidity(
+        bytes32 _fromPoolName,
+        bytes32 _destPoolName,
+        uint256 _amount
+    );
+
+    /**
+     * @dev Distribute LRT tokens from a specified pool to an address
+     * @param poolName Name of the distribution pool
+     * @param _amount Amount of tokens to distribute
+     * @param _to Recipient address
+     * @return Success status of distribution
+     */
+    function distribute(
+        bytes32 poolName,
+        uint256 _amount,
+        address _to
+    ) external returns (bool);
+
+    /**
+     * @dev Swap LMNT to LRT tokens from the "Game" pool
+     * @param _to Recipient address
+     * @param _amount Amount of tokens to swap
+     */
+    function swap(address _to, uint256 _amount) external;
+
+    /**
+     * @dev Transfer remaining liquidity from a pool to the "Game" pool
+     * @param poolName Source pool name
+     */
+    function transferLiquidity(bytes32 poolName) external;
+
+    /**
+     * @dev Get available liquidity for a pool
+     * @param poolName Pool name
+     * @return Available liquidity
+     */
+    function poolLiquidity(bytes32 poolName) external view returns (uint256);
+
+    /**
+     * @dev Get used liquidity for a pool
+     * @param poolName Pool name
+     * @return Used liquidity
+     */
+    function usedLiquidity(bytes32 poolName) external view returns (uint256);
+}
