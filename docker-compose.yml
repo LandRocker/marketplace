@@ -1,0 +1,15 @@
+services:
+  develop:
+    container_name: LRT-contract
+    build:
+      context: .
+    # volumes are added to enable live coding
+    volumes:
+      - .:/home/LRT
+      - /home/LRT/node_modules/
+    command: sh -c "npx hardhat node"
+  test:
+    container_name: LRT-contract-tests
+    build:
+      context: .
+    command: sh -c "npx hardhat test"

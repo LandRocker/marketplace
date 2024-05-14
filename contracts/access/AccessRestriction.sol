@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.6;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
@@ -13,7 +13,6 @@ contract AccessRestriction is AccessControl, Pausable, IAccessRestriction {
     // Roles
     bytes32 public constant DISTRIBUTOR_ROLE = keccak256("DISTRIBUTOR_ROLE");
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-    bytes32 public constant FACTORY_ROLE = keccak256("FACTORY_ROLE");
     bytes32 public constant SCRIPT_ROLE = keccak256("SCRIPT_ROLE");
     bytes32 public constant WERT_ROLE = keccak256("WERT_ROLE");
     bytes32 public constant VESTING_MANAGER_ROLE =
@@ -27,15 +26,11 @@ contract AccessRestriction is AccessControl, Pausable, IAccessRestriction {
     modifier onlyOwner() {
         require(
             hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
-            "AR::Caller is not owner"
+            "AR::caller is not owner"
         );
         _;
     }
 
-    /**
-     * @dev AccessRestriction contract constructor
-     * @param _deployer Address of the deployer of the contract
-     */
     constructor(address _deployer) {
         if (!hasRole(DEFAULT_ADMIN_ROLE, _deployer)) {
             _setupRole(DEFAULT_ADMIN_ROLE, _deployer);
@@ -61,7 +56,7 @@ contract AccessRestriction is AccessControl, Pausable, IAccessRestriction {
      * @param _address Address to check
      */
     function ifOwner(address _address) external view override {
-        require(isOwner(_address), "AR::Caller is not owner");
+        require(isOwner(_address), "AR::caller is not owner");
     }
 
     /**
@@ -69,7 +64,7 @@ contract AccessRestriction is AccessControl, Pausable, IAccessRestriction {
      * @param _address Address to check
      */
     function ifAdmin(address _address) external view override {
-        require(isAdmin(_address), "AR::Caller is not admin");
+        require(isAdmin(_address), "AR::caller is not admin");
     }
 
     /**
@@ -79,7 +74,7 @@ contract AccessRestriction is AccessControl, Pausable, IAccessRestriction {
     function ifOwnerOrAdmin(address _address) external view override {
         require(
             isOwner(_address) || isAdmin(_address),
-            "AR::Caller is not admin or owner"
+            "AR::caller is not admin or owner"
         );
     }
 
@@ -92,7 +87,7 @@ contract AccessRestriction is AccessControl, Pausable, IAccessRestriction {
     ) external view override {
         require(
             isApprovedContract(_address) || isAdmin(_address),
-            "AR::Caller is not admin or approved contract"
+            "AR::caller is not admin or approved contract"
         );
     }
 
@@ -103,16 +98,8 @@ contract AccessRestriction is AccessControl, Pausable, IAccessRestriction {
     function ifAdminOrScript(address _address) external view override {
         require(
             isScript(_address) || isAdmin(_address),
-            "AR::Caller is not admin or script"
+            "AR::caller is not admin or script"
         );
-    }
-
-    /**
-     * @dev Checks if given address is factory
-     * @param _address Address to check
-     */
-    function ifFactory(address _address) external view override {
-        require(isFactory(_address), "AR::Caller is not factory");
     }
 
     /**
@@ -120,7 +107,7 @@ contract AccessRestriction is AccessControl, Pausable, IAccessRestriction {
      * @param _address Address to check
      */
     function ifDistributor(address _address) external view override {
-        require(isDistributor(_address), "AR::Caller is not distributor");
+        require(isDistributor(_address), "AR::caller is not distributor");
     }
 
     /**
@@ -130,7 +117,7 @@ contract AccessRestriction is AccessControl, Pausable, IAccessRestriction {
     function ifVestingManager(address _address) external view override {
         require(
             isVestingManager(_address),
-            "AR::Caller is not vesting manager"
+            "AR::caller is not vesting manager"
         );
     }
 
@@ -141,7 +128,7 @@ contract AccessRestriction is AccessControl, Pausable, IAccessRestriction {
     function ifApprovedContract(address _address) external view override {
         require(
             isApprovedContract(_address),
-            "AR::Caller is not approved contract"
+            "AR::caller is not approved contract"
         );
     }
 
@@ -150,7 +137,7 @@ contract AccessRestriction is AccessControl, Pausable, IAccessRestriction {
      * @param _address Address to check
      */
     function ifWert(address _address) external view override {
-        require(isWert(_address), "AR::Caller is not wert");
+        require(isWert(_address), "AR::caller is not wert");
     }
 
     /**
@@ -158,21 +145,21 @@ contract AccessRestriction is AccessControl, Pausable, IAccessRestriction {
      * @param _address Address to check
      */
     function ifScript(address _address) external view override {
-        require(isScript(_address), "AR::Caller is not script");
+        require(isScript(_address), "AR::caller is not script");
     }
 
     /**
      * @dev Checks if contract is not paused
      */
     function ifNotPaused() external view override {
-        require(!paused(), "AR::Paused");
+        require(!paused(), "AR::Pausable: paused");
     }
 
     /**
      * @dev Checks if contract is paused
      */
     function ifPaused() external view override {
-        require(paused(), "AR::Not paused");
+        require(paused(), "AR::Pausable: not paused");
     }
 
     /**
@@ -204,15 +191,6 @@ contract AccessRestriction is AccessControl, Pausable, IAccessRestriction {
      */
     function isAdmin(address _address) public view override returns (bool) {
         return hasRole(ADMIN_ROLE, _address);
-    }
-
-    /**
-     * @dev Checks if given address has admin role
-     * @param _address Address to check
-     * @return bool true if address has admin role
-     */
-    function isFactory(address _address) public view override returns (bool) {
-        return hasRole(FACTORY_ROLE, _address);
     }
 
     /**

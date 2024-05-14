@@ -20,6 +20,7 @@ const {
 } = require("./fixture/assetMarketplace.fixture");
 const Helper = require("./helper");
 const { createMsgWithSig } = require("./helper/signature");
+const ether = require("@openzeppelin/test-helpers/src/ether");
 
 const zeroAddress = "0x0000000000000000000000000000000000000000";
 
@@ -61,14 +62,15 @@ describe("Asset Marketplace contract", function () {
   describe("test withdraw", function () {
     beforeEach(async function () {
       const price = ethers.utils.parseUnits("1");
-      const assetType = 0;
+      const assetName = Helper.stringToBytes16("Ar");
+      const listedAmount = 10;
       const expireDate =
         (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
-      const quantity = 2;
+      const sellUnit = 2;
 
       await assetMarketplaceInstance
         .connect(admin)
-        .createSell(price, assetType, expireDate, quantity);
+        .createSell(price, assetName, expireDate, sellUnit, listedAmount);
 
       await lrtInstance
         .connect(distributor)
@@ -83,6 +85,7 @@ describe("Asset Marketplace contract", function () {
 
     it("should allow to withdraw contract balance", async function () {
       const amount = ethers.utils.parseUnits("0.002", 18);
+
       const treasuryAddress = await landRockerInstance.treasury();
       const oldTreasury = await lrtInstance.balanceOf(treasuryAddress);
       const oldSystemBalance = await lrtInstance.balanceOf(
@@ -92,7 +95,7 @@ describe("Asset Marketplace contract", function () {
       const tx = await assetMarketplaceInstance.connect(admin).withdraw(amount);
 
       await expect(tx)
-        .to.emit(assetMarketplaceInstance, "Withdrawed")
+        .to.emit(assetMarketplaceInstance, "Withdrawn")
         .withArgs(amount, treasuryAddress);
 
       const newTreasury = await lrtInstance.balanceOf(treasuryAddress);
@@ -137,18 +140,19 @@ describe("Asset Marketplace contract", function () {
       // Create an sell
 
       const price = ethers.utils.parseUnits("1");
-      const assetType = 0; // fuel
+      const assetName = Helper.stringToBytes16("Ar"); // fuel
+      const listedAmount = 10;
       const expireDate =
         (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
-      const quantity = 2;
+      const sellUnit = 2;
 
       const tx = await assetMarketplaceInstance
         .connect(admin)
-        .createSell(price, assetType, expireDate, quantity);
+        .createSell(price, assetName, expireDate, sellUnit, listedAmount);
 
       await expect(tx)
         .to.emit(assetMarketplaceInstance, "SellCreated")
-        .withArgs(0, assetType, expireDate, price, quantity);
+        .withArgs(0, assetName, expireDate, price, sellUnit, listedAmount);
 
       const sell = await assetMarketplaceInstance.assetSells(0);
 
@@ -157,47 +161,99 @@ describe("Asset Marketplace contract", function () {
       expect(sell.status).to.equal(0);
 
       expect(sell.expireDate).to.equal(expireDate);
-      expect(sell.assetType).to.equal(assetType);
-      expect(sell.quantity).to.equal(2);
+      expect(sell.assetName).to.equal(assetName);
+      expect(sell.sellUnit).to.equal(2);
+      expect(sell.listedAmount).to.equal(10);
+      expect(sell.soldAmount).to.equal(0);
     });
-    it("should not allow to create sell if quantity is invalid", async function () {
+    it("should not allow to create sell if sellUnit is invalid", async function () {
       const price = ethers.utils.parseUnits("1");
-      const assetType = 0; // fuel
+      const assetName = Helper.stringToBytes16("Ar"); // fuel
       const expireDate =
         (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
-      const quantity = 0;
+      const sellUnit = 0;
+      const listedAmount = 10;
 
       await expect(
         assetMarketplaceInstance
           .connect(admin)
-          .createSell(price, assetType, expireDate, quantity)
-      ).to.be.revertedWith(AssetMarketplaceErrorMsg.INVALID_QUANTITY);
+          .createSell(price, assetName, expireDate, sellUnit, listedAmount)
+      ).to.be.revertedWith(AssetMarketplaceErrorMsg.INVALID_SELL_UNIT);
+    });
+
+    it("should not allow to create sell if listedAmount is invalid", async function () {
+      const price = ethers.utils.parseUnits("1");
+      const assetName = Helper.stringToBytes16("Ar"); // fuel
+      const expireDate =
+        (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
+      const sellUnit = 2;
+      const listedAmount = 0;
+
+      await expect(
+        assetMarketplaceInstance
+          .connect(admin)
+          .createSell(price, assetName, expireDate, sellUnit, listedAmount)
+      ).to.be.revertedWith(AssetMarketplaceErrorMsg.INVALID_LISTED_AMOUNT);
+    });
+
+    it("should not allow to create sell if listedAmount lower than sellUnit", async function () {
+      const price = ethers.utils.parseUnits("1");
+      const assetName = Helper.stringToBytes16("Ar"); // fuel
+      const expireDate =
+        (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
+      const sellUnit = 10;
+      const listedAmount = 2;
+
+      await expect(
+        assetMarketplaceInstance
+          .connect(admin)
+          .createSell(price, assetName, expireDate, sellUnit, listedAmount)
+      ).to.be.revertedWith(AssetMarketplaceErrorMsg.SELL_UNIT_IS_LARGER);
+    });
+
+    it("should not allow to create sell if listedAmount is not a coefficient of sell unit", async function () {
+      const price = ethers.utils.parseUnits("1");
+      const assetName = Helper.stringToBytes16("Ar"); // fuel
+      const expireDate =
+        (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
+      const sellUnit = 3;
+      const listedAmount = 100;
+
+      await expect(
+        assetMarketplaceInstance
+          .connect(admin)
+          .createSell(price, assetName, expireDate, sellUnit, listedAmount)
+      ).to.be.revertedWith(
+        AssetMarketplaceErrorMsg.NOT_COEFFICIENT_OF_SELL_UNIT
+      );
     });
 
     it("should not allow to create sell if caller is not admin", async function () {
       const price = ethers.utils.parseUnits("1");
-      const assetType = 0; // fuel
+      const assetName = Helper.stringToBytes16("Ar"); // fuel
       const expireDate =
         (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
-      const quantity = 2;
+      const sellUnit = 2;
+      const listedAmount = 100;
 
       await expect(
         assetMarketplaceInstance
           .connect(owner)
-          .createSell(price, assetType, expireDate, quantity)
+          .createSell(price, assetName, expireDate, sellUnit, listedAmount)
       ).to.be.revertedWith(AccessErrorMsg.CALLER_NOT_ADMIN);
     });
 
     it("should not allow to create sell if expire date is invalid", async function () {
       const price = ethers.utils.parseUnits("1");
-      const assetType = 0;
+      const assetName = Helper.stringToBytes16("Ar");
       const expireDate = await time.latest();
-      const quantity = 100;
+      const sellUnit = 100;
+      const listedAmount = 100;
 
       await expect(
         assetMarketplaceInstance
           .connect(admin)
-          .createSell(price, assetType, expireDate, quantity)
+          .createSell(price, assetName, expireDate, sellUnit, listedAmount)
       ).to.be.revertedWith(AssetMarketplaceErrorMsg.INVALID_EXPIRE_DATE);
     });
   });
@@ -206,91 +262,157 @@ describe("Asset Marketplace contract", function () {
     it("should allow to edit sell", async function () {
       // Create an sell
       const price = ethers.utils.parseUnits("1");
-      const assetType = 0;
+      const assetName = Helper.stringToBytes16("Ar");
       const expireDate =
         (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
-      const quantity = 2;
+      const sellUnit = 2;
+      const listedAmount = 100;
 
       await assetMarketplaceInstance
         .connect(admin)
-        .createSell(price, assetType, expireDate, quantity);
+        .createSell(price, assetName, expireDate, sellUnit, listedAmount);
 
       const price2 = ethers.utils.parseUnits("2");
-      const assetType2 = 1;
+      const assetName2 = Helper.stringToBytes16("Ne");
 
       const expireDate2 =
         (await time.latest()) + (await Helper.convertToSeconds("weeks", 2));
-      const quantity2 = 3;
+      const sellUnit2 = 3;
+      const listedAmount2 = 99;
 
       const tx = await assetMarketplaceInstance
         .connect(admin)
-        .editSell(0, price2, assetType2, expireDate2, quantity2);
+        .editSell(0, price2, assetName2, expireDate2, sellUnit2, listedAmount2);
 
       await expect(tx)
         .to.emit(assetMarketplaceInstance, "SellUpdated")
-        .withArgs(0, assetType2, expireDate2, price2, quantity2);
+        .withArgs(0, assetName2, expireDate2, price2, sellUnit2, listedAmount2);
 
       const sell = await assetMarketplaceInstance.assetSells(0);
 
       // Check that the sell has the correct details
       expect(sell.price).to.equal(price2);
       expect(sell.status).to.equal(0);
-      expect(sell.assetType).to.equal(assetType2);
+      expect(sell.assetName).to.equal(assetName2);
       expect(sell.expireDate).to.equal(expireDate2);
-      expect(sell.quantity).to.equal(quantity2);
+      expect(sell.sellUnit).to.equal(sellUnit2);
+      expect(sell.listedAmount).to.equal(listedAmount2);
     });
 
     it("should not allow to edit sell if caller is not admin", async function () {
       const price = ethers.utils.parseUnits("1");
-      const assetType = 0; // fuel
+      const assetName = Helper.stringToBytes16("Ar"); // fuel
       const expireDate =
         (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
-      const quantity = 2;
+      const sellUnit = 2;
+      const listedAmount = 100;
 
       await expect(
         assetMarketplaceInstance
           .connect(owner)
-          .editSell(0, price, assetType, expireDate, quantity)
+          .editSell(0, price, assetName, expireDate, sellUnit, listedAmount)
       ).to.be.revertedWith(AccessErrorMsg.CALLER_NOT_ADMIN);
     });
 
-    it("should not allow to edit sell if quantity Amount is too low", async function () {
+    it("should not allow to edit sell if sellUnit is too low", async function () {
       const price = ethers.utils.parseUnits("1");
       const expireDate =
         (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
-      const quantity = 0;
-      const assetType = 0;
+      const sellUnit = 0;
+      const listedAmount = 100;
+
+      const assetName = Helper.stringToBytes16("Ar");
 
       await expect(
         assetMarketplaceInstance
           .connect(admin)
-          .editSell(0, price, assetType, expireDate, quantity)
-      ).to.be.revertedWith(AssetMarketplaceErrorMsg.INVALID_QUANTITY);
+          .editSell(0, price, assetName, expireDate, sellUnit, listedAmount)
+      ).to.be.revertedWith(AssetMarketplaceErrorMsg.INVALID_SELL_UNIT);
+    });
+
+    it("should not allow to edit sell if listedAmount is too low", async function () {
+      const price = ethers.utils.parseUnits("1");
+      const expireDate =
+        (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
+      const sellUnit = 2;
+      const assetName = Helper.stringToBytes16("Ar");
+      const listedAmount = 10;
+
+      await assetMarketplaceInstance
+        .connect(admin)
+        .createSell(price, assetName, expireDate, sellUnit, listedAmount);
+
+      await expect(
+        assetMarketplaceInstance
+          .connect(admin)
+          .editSell(0, price, assetName, expireDate, sellUnit, 0)
+      ).to.be.revertedWith(AssetMarketplaceErrorMsg.INVALID_LISTED_AMOUNT);
+    });
+
+    it("should not allow to edit sell if listedAmount is lower than sell unit", async function () {
+      const price = ethers.utils.parseUnits("1");
+      const expireDate =
+        (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
+      const sellUnit = 20;
+      const assetName = Helper.stringToBytes16("Ar");
+      const listedAmount = 100;
+
+      await assetMarketplaceInstance
+        .connect(admin)
+        .createSell(price, assetName, expireDate, sellUnit, listedAmount);
+
+      await expect(
+        assetMarketplaceInstance
+          .connect(admin)
+          .editSell(0, price, assetName, expireDate, 20, 10)
+      ).to.be.revertedWith(AssetMarketplaceErrorMsg.SELL_UNIT_IS_LARGER);
+    });
+
+    it("should not allow to edit sell if listedAmount is not a coefficient of sell unit", async function () {
+      const price = ethers.utils.parseUnits("1");
+      const expireDate =
+        (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
+      const sellUnit = 20;
+      const assetName = Helper.stringToBytes16("Ar");
+      const listedAmount = 100;
+
+      await assetMarketplaceInstance
+        .connect(admin)
+        .createSell(price, assetName, expireDate, sellUnit, listedAmount);
+
+      await expect(
+        assetMarketplaceInstance
+          .connect(admin)
+          .editSell(0, price, assetName, expireDate, 3, 100)
+      ).to.be.revertedWith(
+        AssetMarketplaceErrorMsg.NOT_COEFFICIENT_OF_SELL_UNIT
+      );
     });
 
     it("should not allow to edit sell if expire date is invalid", async function () {
       const price = ethers.utils.parseUnits("1");
       const expireDate = await time.latest();
-      const quantity = 0;
-      const assetType = 0;
+      const sellUnit = 0;
+      const assetName = Helper.stringToBytes16("Ar");
+      const listedAmount = 100;
 
       await expect(
         assetMarketplaceInstance
           .connect(admin)
-          .editSell(0, price, assetType, expireDate, quantity)
+          .editSell(0, price, assetName, expireDate, sellUnit, listedAmount)
       ).to.be.revertedWith(AssetMarketplaceErrorMsg.INVALID_EXPIRE_DATE);
     });
 
     it("should not allow to edit sell if sell has not valid status", async function () {
       const price = ethers.utils.parseUnits("1");
-      const assetType = 0;
+      const assetName = Helper.stringToBytes16("Ar");
       const expireDate =
         (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
-      const quantity = 2;
-
+      const sellUnit = 2;
+      const listedAmount = 2;
       await assetMarketplaceInstance
         .connect(admin)
-        .createSell(price, assetType, expireDate, quantity);
+        .createSell(price, assetName, expireDate, sellUnit, listedAmount);
 
       await lrtInstance
         .connect(distributor)
@@ -306,7 +428,7 @@ describe("Asset Marketplace contract", function () {
         assetMarketplaceInstance
 
           .connect(admin)
-          .editSell(0, price, assetType, expireDate, quantity)
+          .editSell(0, price, assetName, expireDate, sellUnit, listedAmount)
       ).to.be.revertedWith(AssetMarketplaceErrorMsg.SOLD_ASSET);
     });
   });
@@ -314,14 +436,15 @@ describe("Asset Marketplace contract", function () {
   describe("test buy assets", function () {
     it("should allow to buy off-chain assets", async function () {
       const price = ethers.utils.parseUnits("1");
-      const assetType = 0;
+      const assetName = Helper.stringToBytes16("Ar");
       const expireDate =
         (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
-      const quantity = 2;
+      const sellUnit = 2;
+      const listedAmount = 2;
 
       await assetMarketplaceInstance
         .connect(admin)
-        .createSell(price, assetType, expireDate, quantity);
+        .createSell(price, assetName, expireDate, sellUnit, listedAmount);
 
       await lrtInstance
         .connect(distributor)
@@ -340,11 +463,10 @@ describe("Asset Marketplace contract", function () {
       const tx = await assetMarketplaceInstance.connect(addr2).buyItem(0);
 
       await expect(tx)
-        .to.emit(assetMarketplaceInstance, "OffChainItemBought")
-        .withArgs(0, assetType, addr2.address, quantity, price);
+        .to.emit(assetMarketplaceInstance, "AssetBoughtWithBalance")
+        .withArgs(0, assetName, addr2.address, sellUnit, price);
 
       const newBuyerBalance = await lrtInstance.balanceOf(addr2.address);
-      const newSellerBalance = await lrtInstance.balanceOf(owner.address);
       const newSystemBalance = await lrtInstance.balanceOf(
         assetMarketplaceInstance.address
       );
@@ -363,11 +485,12 @@ describe("Asset Marketplace contract", function () {
 
     it("should allow to buy off-chain assets with vested funds", async function () {
       //create vesting plan
-      const startDate1 = await time.latest();
+      const startDate1 =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 1));
       const cliff1 = await Helper.convertToSeconds("months", 3); // 3 month cliff
       const duration1 = await Helper.convertToSeconds("months", 48); // 48 month vesting period
       const revocable1 = true;
-      const poolName = ethers.utils.formatBytes32String("PreSale");
+      const poolName = ethers.utils.formatBytes32String("Sale");
       const initialReleasePercentage = 5000;
 
       // create the vesting plan
@@ -387,7 +510,7 @@ describe("Asset Marketplace contract", function () {
       const planId1 = 0;
 
       const vestingStartDate1 =
-        (await time.latest()) + (await Helper.convertToSeconds("days", 1)); // Start date 1 day from now
+        (await time.latest()) + (await Helper.convertToSeconds("days", 2)); // Start date 1 day from now
       await lrtVestingInstance
         .connect(admin)
         .createVesting(
@@ -397,14 +520,15 @@ describe("Asset Marketplace contract", function () {
           planId1
         );
       const price = ethers.utils.parseUnits("1");
-      const assetType = 0;
+      const assetName = Helper.stringToBytes16("Ar");
       const expireDate =
         (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
-      const quantity = 2;
+      const sellUnit = 2;
+      const listedAmount = 2;
 
       await assetMarketplaceInstance
         .connect(admin)
-        .createSell(price, assetType, expireDate, quantity);
+        .createSell(price, assetName, expireDate, sellUnit, listedAmount);
 
       await lrtInstance
         .connect(addr1)
@@ -413,8 +537,8 @@ describe("Asset Marketplace contract", function () {
       const tx = await assetMarketplaceInstance.connect(addr1).buyItem(0);
 
       await expect(tx)
-        .to.emit(assetMarketplaceInstance, "OffChainItemBought")
-        .withArgs(0, assetType, addr1.address, quantity, price);
+        .to.emit(assetMarketplaceInstance, "AssetBoughtWithVest")
+        .withArgs(0, assetName, addr1.address, sellUnit, price);
 
       const sell = await assetMarketplaceInstance.assetSells(0);
       const vestingStat = await lrtVestingInstance.holdersStat(addr1.address);
@@ -424,14 +548,15 @@ describe("Asset Marketplace contract", function () {
 
     it("should not allow to buy off-chain assets token when sale has expired", async function () {
       const price = ethers.utils.parseUnits("1");
-      const assetType = 0;
+      const assetName = Helper.stringToBytes16("Ar");
       const expireDate =
         (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
-      const quantity = 2;
+      const sellUnit = 2;
+      const listedAmount = 2;
 
       await assetMarketplaceInstance
         .connect(admin)
-        .createSell(price, assetType, expireDate, quantity);
+        .createSell(price, assetName, expireDate, sellUnit, listedAmount);
 
       await lrtInstance
         .connect(distributor)
@@ -453,14 +578,15 @@ describe("Asset Marketplace contract", function () {
 
     it("should not allow to buy off-chain assets token when status of listed NFTs is not be valid", async function () {
       const price = ethers.utils.parseUnits("1");
-      const assetType = 0;
+      const assetName = Helper.stringToBytes16("Ar");
       const expireDate =
         (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
-      const quantity = 2;
+      const sellUnit = 2;
+      const listedAmount = 2;
 
       await assetMarketplaceInstance
         .connect(admin)
-        .createSell(price, assetType, expireDate, quantity);
+        .createSell(price, assetName, expireDate, sellUnit, listedAmount);
 
       await assetMarketplaceInstance.connect(admin).cancelSell(0);
 
@@ -477,16 +603,44 @@ describe("Asset Marketplace contract", function () {
       ).to.be.revertedWith(AssetMarketplaceErrorMsg.INVALID_STATUS);
     });
 
-    it("should not allow to buy off-chain assets token when has allowance error", async function () {
+    it("should not allow to buy off-chain assets token when status of listed NFTs is not be valid", async function () {
       const price = ethers.utils.parseUnits("1");
-      const assetType = 0;
+      const assetName = Helper.stringToBytes16("Ar");
       const expireDate =
         (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
-      const quantity = 2;
+      const sellUnit = 2;
+      const listedAmount = 2;
 
       await assetMarketplaceInstance
         .connect(admin)
-        .createSell(price, assetType, expireDate, quantity);
+        .createSell(price, assetName, expireDate, sellUnit, listedAmount);
+
+      await lrtInstance
+        .connect(distributor)
+        .transferToken(addr2.address, ethers.utils.parseUnits("500"));
+
+      await lrtInstance
+        .connect(addr2)
+        .approve(assetMarketplaceInstance.address, price);
+
+      await assetMarketplaceInstance.connect(addr2).buyItem(0);
+
+      await expect(
+        assetMarketplaceInstance.connect(addr2).buyItem(0)
+      ).to.be.revertedWith(AssetMarketplaceErrorMsg.EXCEED_SELL);
+    });
+
+    it("should not allow to buy off-chain assets token when has allowance error", async function () {
+      const price = ethers.utils.parseUnits("1");
+      const assetName = Helper.stringToBytes16("Ar");
+      const expireDate =
+        (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
+      const sellUnit = 2;
+      const listedAmount = 2;
+
+      await assetMarketplaceInstance
+        .connect(admin)
+        .createSell(price, assetName, expireDate, sellUnit, listedAmount);
 
       await lrtInstance
         .connect(distributor)
@@ -503,14 +657,15 @@ describe("Asset Marketplace contract", function () {
 
     it("should not allow to buy off-chain assets token when user has not sufficient vesting balance", async function () {
       const price = ethers.utils.parseUnits("1");
-      const assetType = 0;
+      const assetName = Helper.stringToBytes16("Ar");
       const expireDate =
         (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
-      const quantity = 2;
+      const sellUnit = 2;
+      const listedAmount = 2;
 
       await assetMarketplaceInstance
         .connect(admin)
-        .createSell(price, assetType, expireDate, quantity);
+        .createSell(price, assetName, expireDate, sellUnit, listedAmount);
 
       await lrtInstance
         .connect(addr2)
@@ -518,21 +673,24 @@ describe("Asset Marketplace contract", function () {
 
       await expect(
         assetMarketplaceInstance.connect(addr2).buyItem(0)
-      ).to.be.revertedWith(AssetMarketplaceErrorMsg.INSUFFICIENT_BALANCE);
+      ).to.be.revertedWith(
+        AssetMarketplaceErrorMsg.INSUFFICIENT_VESTED_BALANCE
+      );
     });
   });
 
   describe("test cancel sell", function () {
     beforeEach(async function () {
       const price = ethers.utils.parseUnits("1");
-      const assetType = 0;
+      const assetName = Helper.stringToBytes16("Ar");
       const expireDate =
         (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
-      const quantity = 2;
+      const sellUnit = 2;
+      const listedAmount = 2;
 
       await assetMarketplaceInstance
         .connect(admin)
-        .createSell(price, assetType, expireDate, quantity);
+        .createSell(price, assetName, expireDate, sellUnit, listedAmount);
     });
 
     it("should allow to cancel sell", async function () {
@@ -577,16 +735,16 @@ describe("Asset Marketplace contract", function () {
   //user off-chain assets buying
   describe("test user off-chain assets buying", function () {
     it("should allow to buy off-chain assets", async function () {
-      const price = 1;
-      const assetType = 0;
+      const price = ethers.utils.parseUnits("10");
+      const assetName = Helper.stringToBytes16("Ar");
       const expireDate = 0;
-      const quantity = 2;
+      const sellUnit = 2;
       const status = 0;
       const seller = addr1.address;
       const buyer = addr2.address;
-      const orderId = 0;
       const orderIdHash = ethers.utils.keccak256(Buffer.from("0"));
-  
+      const systemFee = await landRockerInstance.systemFee();
+
       const privateKey = Uint8Array.from(
         Buffer.from(
           "dbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97",
@@ -594,62 +752,15 @@ describe("Asset Marketplace contract", function () {
         )
       );
 
-      // console.log(
-      //   privateKey,
-      //   "..............................................."
-      // );
-
-      // console.log(assetMarketplaceInstance.address);
       let sign1 = await createMsgWithSig(
         assetMarketplaceInstance,
         privateKey,
-        orderIdHash,
-        status,
-        assetType,
+        seller,
+        assetName,
         expireDate,
         price,
-        quantity
+        sellUnit
       );
-
-      // console.log(sign1.v.toString(), "sign1 v");
-      // console.log(sign1.r.toString(), "sign1 r");
-      // console.log(sign1.s.toString(), "sign1 s");
-
-      const domain = {
-        name: "AssetMarketplace",
-        version: "1",
-        chainId: 31337,
-        verifyingContract: assetMarketplaceInstance.address,
-      };
-
-      const types = {
-        fullFillOrder: [
-          { name: "orderIdHash", type: "bytes32" },
-          { name: "status", type: "uint32" },
-          { name: "assetType", type: "uint8" },
-          { name: "expireDate", type: "uint64" },
-          { name: "price", type: "uint256" },
-          { name: "quantity", type: "uint256" },
-        ],
-      };
-
-      const value = {
-        orderIdHash: orderIdHash,
-        status: 0,
-        assetType: 0,
-        expireDate: 0,
-        price: ethers.utils.parseUnits("10"),
-        quantity: 2,
-      };
-
-      // // set the provider with the desired port
-      const provider = new ethers.providers.JsonRpcProvider(
-        `http://localhost:8545`
-      );
-
-      const signer = new ethers.Wallet(privateKey, provider);
-      const signature1 = await signer._signTypedData(domain, types, value);
-      const signParams1 = ethers.utils.splitSignature(signature1);
 
       await lrtInstance
         .connect(distributor)
@@ -663,32 +774,43 @@ describe("Asset Marketplace contract", function () {
       const oldSystemBalance = await lrtInstance.balanceOf(
         assetMarketplaceInstance.address
       );
+      const oldSellerBalance = await lrtInstance.balanceOf(seller);
 
-      //console.log("xxxxxx", signParams1.v, signParams1.r, signParams1.s);
       const tx = await assetMarketplaceInstance
         .connect(addr2)
         .fulfillOrder(
           orderIdHash,
           seller,
           status,
-          assetType,
+          assetName,
           expireDate,
           price,
-          quantity,
+          sellUnit,
           sign1.v,
           sign1.r,
           sign1.s
         );
 
+      let systemPortion = Math.Big(systemFee).mul(price).div(10000);
+      let totalPay = Math.Big(price).sub(systemPortion);
+
       await expect(tx)
-        .to.emit(assetMarketplaceInstance, "UserOffChainItemBought")
-        .withArgs(orderIdHash, assetType, addr2.address, quantity, price);
+        .to.emit(assetMarketplaceInstance, "FulFilledOrder")
+        .withArgs(
+          orderIdHash,
+          assetName,
+          seller,
+          addr2.address,
+          sellUnit,
+          BigInt(totalPay)
+        );
 
       const newBuyerBalance = await lrtInstance.balanceOf(buyer);
       const newSystemBalance = await lrtInstance.balanceOf(
         assetMarketplaceInstance.address
       );
-     
+      const newSellerBalance = await lrtInstance.balanceOf(seller);
+
       expect(
         await assetMarketplaceInstance.orderFulfilled(orderIdHash)
       ).to.equal(true);
@@ -697,147 +819,25 @@ describe("Asset Marketplace contract", function () {
       );
 
       expect(Number(newSystemBalance)).to.equal(
-        Number(Math.Big(oldSystemBalance).add(price))
-      );
-    });
-
-    it("should allow to buy user off-chain assets with vested funds", async function () {
-      const price = 1;
-      const assetType = 0;
-      const expireDate =
-        (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
-      const quantity = 2;
-      const status = 0;
-      const seller = addr1.address;
-      const buyer = addr2.address;
-      const orderId = 0;
-      const orderIdHash = ethers.utils.keccak256(Buffer.from("0"));
-      const privateKey = Uint8Array.from(
-        Buffer.from(
-          "dbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97",
-          "hex"
-        )
-      );
-      
-      let sign1 = await createMsgWithSig(
-        assetMarketplaceInstance,
-        privateKey,
-        orderIdHash,
-        status,
-        assetType,
-        expireDate,
-        price,
-        quantity
+        Number(Math.Big(oldSystemBalance).add(systemPortion))
       );
 
-      const domain = {
-        name: "AssetMarketplace",
-        version: "1",
-        chainId: 31337,
-        verifyingContract: assetMarketplaceInstance.address,
-      };
-
-      const types = {
-        fullFillOrder: [
-          { name: "orderIdHash", type: "bytes32" },
-          { name: "status", type: "uint32" },
-          { name: "assetType", type: "uint8" },
-          { name: "expireDate", type: "uint64" },
-          { name: "price", type: "uint256" },
-          { name: "quantity", type: "uint256" },
-        ],
-      };
-
-      const value = {
-        orderIdHash: orderIdHash,
-        status: 0,
-        assetType: 0,
-        expireDate: 0,
-        price: ethers.utils.parseUnits("10"),
-        quantity: 2,
-      };
-
-      // set the provider with the desired port
-      const provider = new ethers.providers.JsonRpcProvider(
-        `http://localhost:8545`
+      expect(Number(newSellerBalance)).to.equal(
+        Number(Math.Big(oldSellerBalance).add(totalPay))
       );
-
-      const signer = new ethers.Wallet(privateKey, provider);
-      const signature1 = await signer._signTypedData(domain, types, value);
-      const signParams1 = ethers.utils.splitSignature(signature1);
-
-      //create vesting plan
-      const startDate1 = await time.latest();
-      const cliff1 = await Helper.convertToSeconds("months", 3); // 3 month cliff
-      const duration1 = await Helper.convertToSeconds("months", 48); // 48 month vesting period
-      const revocable1 = true;
-      const poolName = ethers.utils.formatBytes32String("PreSale");
-      const initialReleasePercentage = 5000;
-
-      // create the vesting plan
-      await lrtVestingInstance
-        .connect(admin)
-        .createVestingPlan(
-          startDate1,
-          cliff1,
-          duration1,
-          revocable1,
-          initialReleasePercentage,
-          poolName
-        );
-
-      //create vesting schedules addr1
-      const vestingAmount1 = ethers.utils.parseUnits("10");
-      const planId1 = 0;
-
-      const vestingStartDate1 =
-        (await time.latest()) + (await Helper.convertToSeconds("days", 1)); // Start date 1 day from now
-      await lrtVestingInstance
-        .connect(admin)
-        .createVesting(buyer, vestingStartDate1, vestingAmount1, planId1);
-
-      await lrtInstance
-        .connect(addr2)
-        .approve(assetMarketplaceInstance.address, price);
-      
-      const tx = await assetMarketplaceInstance
-        .connect(addr2)
-        .fulfillOrder(
-          orderIdHash,
-          seller,
-          status,
-          assetType,
-          expireDate,
-          price,
-          quantity,
-          sign1.v,
-          sign1.r,
-          sign1.s
-        );
-
-      await expect(tx)
-        .to.emit(assetMarketplaceInstance, "UserOffChainItemBought")
-        .withArgs(orderIdHash, assetType, addr2.address, quantity, price);
-      
-      expect(
-        await assetMarketplaceInstance.orderFulfilled(orderIdHash)
-      ).to.equal(true);
-      const vestingStat = await lrtVestingInstance.holdersStat(buyer);
-      expect(vestingStat.claimedAmount).to.equal(price);  
     });
 
     it("should not allow to buy user off-chain assets token when sale has expired", async function () {
-      const price = 1;
-      const assetType = 0;
+      const price = ethers.utils.parseUnits("10");
+      const assetName = Helper.stringToBytes16("Ar");
       const expireDate =
         (await time.latest()) + (await Helper.convertToSeconds("weeks", 1));
-      const quantity = 2;
+      const sellUnit = 2;
       const status = 0;
       const seller = addr1.address;
       const buyer = addr2.address;
-      const orderId = 0;
       const orderIdHash = ethers.utils.keccak256(Buffer.from("0"));
-      console.log(orderIdHash, "orderIdHash");
+
       const privateKey = Uint8Array.from(
         Buffer.from(
           "dbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97",
@@ -848,49 +848,12 @@ describe("Asset Marketplace contract", function () {
       let sign1 = await createMsgWithSig(
         assetMarketplaceInstance,
         privateKey,
-        orderIdHash,
-        status,
-        assetType,
+        seller,
+        assetName,
         expireDate,
         price,
-        quantity
-      );    
-
-      const domain = {
-        name: "AssetMarketplace",
-        version: "1",
-        chainId: 31337,
-        verifyingContract: assetMarketplaceInstance.address,
-      };
-
-      const types = {
-        fullFillOrder: [
-          { name: "orderIdHash", type: "bytes32" },
-          { name: "status", type: "uint32" },
-          { name: "assetType", type: "uint8" },
-          { name: "expireDate", type: "uint64" },
-          { name: "price", type: "uint256" },
-          { name: "quantity", type: "uint256" },
-        ],
-      };
-
-      const value = {
-        orderIdHash: orderIdHash,
-        status: 0,
-        assetType: 0,
-        expireDate: 0,
-        price: ethers.utils.parseUnits("10"),
-        quantity: 2,
-      };
-
-      // // set the provider with the desired port
-      const provider = new ethers.providers.JsonRpcProvider(
-        `http://localhost:8545`
+        sellUnit
       );
-
-      const signer = new ethers.Wallet(privateKey, provider);
-      const signature1 = await signer._signTypedData(domain, types, value);
-      const signParams1 = ethers.utils.splitSignature(signature1);
 
       await lrtInstance
         .connect(distributor)
@@ -904,7 +867,7 @@ describe("Asset Marketplace contract", function () {
       await lrtInstance
         .connect(addr2)
         .approve(assetMarketplaceInstance.address, price);
-    
+
       await expect(
         assetMarketplaceInstance
           .connect(addr2)
@@ -912,10 +875,10 @@ describe("Asset Marketplace contract", function () {
             orderIdHash,
             seller,
             status,
-            assetType,
+            assetName,
             expireDate,
             price,
-            quantity,
+            sellUnit,
             sign1.v,
             sign1.r,
             sign1.s
@@ -923,15 +886,14 @@ describe("Asset Marketplace contract", function () {
       ).to.be.revertedWith(AssetMarketplaceErrorMsg.HAS_EXPIRED);
     });
 
-    it("should not allow to buy user off-chain assets token when status of listed NFTs is not be valid", async function () {
-      const price = 1;
-      const assetType = 0;
+    it("should not allow to buy user off-chain assets token when status of listed asset is not be valid", async function () {
+      const price = ethers.utils.parseUnits("10");
+      const assetName = Helper.stringToBytes16("Ar");
       const expireDate = 0;
-      const quantity = 2;
+      const sellUnit = 2;
       const status = 2;
       const seller = addr1.address;
       const buyer = addr2.address;
-      const orderId = 0;
       const orderIdHash = ethers.utils.keccak256(Buffer.from("0"));
       const privateKey = Uint8Array.from(
         Buffer.from(
@@ -943,50 +905,12 @@ describe("Asset Marketplace contract", function () {
       let sign1 = await createMsgWithSig(
         assetMarketplaceInstance,
         privateKey,
-        orderIdHash,
-        status,
-        assetType,
+        seller,
+        assetName,
         expireDate,
         price,
-        quantity
+        sellUnit
       );
-
-
-      const domain = {
-        name: "AssetMarketplace",
-        version: "1",
-        chainId: 31337,
-        verifyingContract: assetMarketplaceInstance.address,
-      };
-
-      const types = {
-        fullFillOrder: [
-          { name: "orderIdHash", type: "bytes32" },
-          { name: "status", type: "uint32" },
-          { name: "assetType", type: "uint8" },
-          { name: "expireDate", type: "uint64" },
-          { name: "price", type: "uint256" },
-          { name: "quantity", type: "uint256" },
-        ],
-      };
-
-      const value = {
-        orderIdHash: orderIdHash,
-        status: 0,
-        assetType: 0,
-        expireDate: 0,
-        price: ethers.utils.parseUnits("10"),
-        quantity: 2,
-      };
-
-      // // set the provider with the desired port
-      const provider = new ethers.providers.JsonRpcProvider(
-        `http://localhost:8545`
-      );
-
-      const signer = new ethers.Wallet(privateKey, provider);
-      const signature1 = await signer._signTypedData(domain, types, value);
-      const signParams1 = ethers.utils.splitSignature(signature1);
 
       await lrtInstance
         .connect(distributor)
@@ -996,11 +920,6 @@ describe("Asset Marketplace contract", function () {
         .connect(addr2)
         .approve(assetMarketplaceInstance.address, price); //addr1.address
 
-      const oldBuyerBalance = await lrtInstance.balanceOf(buyer);
-      const oldSystemBalance = await lrtInstance.balanceOf(
-        assetMarketplaceInstance.address
-      );
-    
       await expect(
         assetMarketplaceInstance
           .connect(addr2)
@@ -1008,10 +927,10 @@ describe("Asset Marketplace contract", function () {
             orderIdHash,
             seller,
             status,
-            assetType,
+            assetName,
             expireDate,
             price,
-            quantity,
+            sellUnit,
             sign1.v,
             sign1.r,
             sign1.s
@@ -1020,14 +939,13 @@ describe("Asset Marketplace contract", function () {
     });
 
     it("should not allow to buy user off-chain assets token when has allowance error", async function () {
-      const price = 1;
-      const assetType = 0;
+      const price = ethers.utils.parseUnits("10");
+      const assetName = Helper.stringToBytes16("Ar");
       const expireDate = 0;
-      const quantity = 2;
+      const sellUnit = 2;
       const status = 0;
       const seller = addr1.address;
       const buyer = addr2.address;
-      const orderId = 0;
       const orderIdHash = ethers.utils.keccak256(Buffer.from("0"));
       const privateKey = Uint8Array.from(
         Buffer.from(
@@ -1039,49 +957,12 @@ describe("Asset Marketplace contract", function () {
       let sign1 = await createMsgWithSig(
         assetMarketplaceInstance,
         privateKey,
-        orderIdHash,
-        status,
-        assetType,
+        seller,
+        assetName,
         expireDate,
         price,
-        quantity
-      );    
-
-      const domain = {
-        name: "AssetMarketplace",
-        version: "1",
-        chainId: 31337,
-        verifyingContract: assetMarketplaceInstance.address,
-      };
-
-      const types = {
-        fullFillOrder: [
-          { name: "orderIdHash", type: "bytes32" },
-          { name: "status", type: "uint32" },
-          { name: "assetType", type: "uint8" },
-          { name: "expireDate", type: "uint64" },
-          { name: "price", type: "uint256" },
-          { name: "quantity", type: "uint256" },
-        ],
-      };
-
-      const value = {
-        orderIdHash: orderIdHash,
-        status: 0,
-        assetType: 0,
-        expireDate: 0,
-        price: ethers.utils.parseUnits("10"),
-        quantity: 2,
-      };
-
-      // // set the provider with the desired port
-      const provider = new ethers.providers.JsonRpcProvider(
-        `http://localhost:8545`
+        sellUnit
       );
-
-      const signer = new ethers.Wallet(privateKey, provider);
-      const signature1 = await signer._signTypedData(domain, types, value);
-      const signParams1 = ethers.utils.splitSignature(signature1);
 
       await lrtInstance
         .connect(distributor)
@@ -1091,11 +972,6 @@ describe("Asset Marketplace contract", function () {
         .connect(addr2)
         .approve(assetMarketplaceInstance.address, 0); //addr1.address
 
-      const oldBuyerBalance = await lrtInstance.balanceOf(buyer);
-      const oldSystemBalance = await lrtInstance.balanceOf(
-        assetMarketplaceInstance.address
-      );
-   
       await expect(
         assetMarketplaceInstance
           .connect(addr2)
@@ -1103,10 +979,10 @@ describe("Asset Marketplace contract", function () {
             orderIdHash,
             seller,
             status,
-            assetType,
+            assetName,
             expireDate,
             price,
-            quantity,
+            sellUnit,
             sign1.v,
             sign1.r,
             sign1.s
@@ -1114,15 +990,13 @@ describe("Asset Marketplace contract", function () {
       ).to.be.revertedWith(AssetMarketplaceErrorMsg.ALLOWANCE);
     });
 
-    it("should not allow to buy user off-chain assets token when user has not sufficient vesting balance", async function () {
-      const price = 1;
-      const assetType = 0;
+    it("should not allow to buy user off-chain assets token when user has not sufficient balance", async function () {
+      const price = ethers.utils.parseUnits("10");
+      const assetName = Helper.stringToBytes16("Ar");
       const expireDate = 0;
-      const quantity = 2;
+      const sellUnit = 2;
       const status = 0;
       const seller = addr1.address;
-      const buyer = addr2.address;
-      const orderId = 0;
       const orderIdHash = ethers.utils.keccak256(Buffer.from("0"));
       const privateKey = Uint8Array.from(
         Buffer.from(
@@ -1130,58 +1004,21 @@ describe("Asset Marketplace contract", function () {
           "hex"
         )
       );
-      
+
       let sign1 = await createMsgWithSig(
         assetMarketplaceInstance,
         privateKey,
-        orderIdHash,
-        status,
-        assetType,
+        seller,
+        assetName,
         expireDate,
         price,
-        quantity
+        sellUnit
       );
-
-      const domain = {
-        name: "AssetMarketplace",
-        version: "1",
-        chainId: 31337,
-        verifyingContract: assetMarketplaceInstance.address,
-      };
-
-      const types = {
-        fullFillOrder: [
-          { name: "orderIdHash", type: "bytes32" },
-          { name: "status", type: "uint32" },
-          { name: "assetType", type: "uint8" },
-          { name: "expireDate", type: "uint64" },
-          { name: "price", type: "uint256" },
-          { name: "quantity", type: "uint256" },
-        ],
-      };
-
-      const value = {
-        orderIdHash: orderIdHash,
-        status: 0,
-        assetType: 0,
-        expireDate: 0,
-        price: ethers.utils.parseUnits("10"),
-        quantity: 2,
-      };
-
-      // // set the provider with the desired port
-      const provider = new ethers.providers.JsonRpcProvider(
-        `http://localhost:8545`
-      );
-
-      const signer = new ethers.Wallet(privateKey, provider);
-      const signature1 = await signer._signTypedData(domain, types, value);
-      const signParams1 = ethers.utils.splitSignature(signature1);
 
       await lrtInstance
         .connect(addr2)
         .approve(assetMarketplaceInstance.address, price); //addr1.address
-     
+
       await expect(
         assetMarketplaceInstance
           .connect(addr2)
@@ -1189,38 +1026,135 @@ describe("Asset Marketplace contract", function () {
             orderIdHash,
             seller,
             status,
-            assetType,
+            assetName,
             expireDate,
             price,
-            quantity,
+            sellUnit,
             sign1.v,
             sign1.r,
             sign1.s
           )
-      ).to.be.revertedWith(AssetMarketplaceErrorMsg.INSUFFICIENT_BALANCE);
+      ).to.be.revertedWith(AssetMarketplaceErrorMsg.INSUFFICIENT_LRT_BALANCE);
     });
-  });
 
-  //Upgradeability testing
-  describe("Contract Version 1 test", function () {
-    it("Should return the greeting after deployment", async function () {
-      const AssetMarketplace = await ethers.getContractFactory(
-        "AssetMarketplace"
+    it("should not allow to buy user off-chain assets token when user wants to sell its fuels", async function () {
+      const price = ethers.utils.parseUnits("10");
+      const assetName = Helper.stringToBytes16("fuel");
+      const expireDate = 0;
+      const sellUnit = 2;
+      const status = 0;
+      const seller = addr1.address;
+      const buyer = addr2.address;
+      const orderIdHash = ethers.utils.keccak256(Buffer.from("0"));
+      const privateKey = Uint8Array.from(
+        Buffer.from(
+          "dbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97",
+          "hex"
+        )
       );
 
-      const contract = await upgrades.deployProxy(
-        AssetMarketplace,
-        [
-          arInstance.address,
-          lrtInstance.address,
-          landRockerInstance.address,
-          lrtVestingInstance.address,
-        ],
-        { initializer: "__AssetMarketplace_init", kind: "uups" }
+      let sign1 = await createMsgWithSig(
+        assetMarketplaceInstance,
+        privateKey,
+        seller,
+        assetName,
+        expireDate,
+        price,
+        sellUnit
       );
-      await contract.deployed();
 
-      expect(await contract.greeting()).to.equal("Hello, upgradeable world!");
+      await lrtInstance
+        .connect(distributor)
+        .transferToken(buyer, ethers.utils.parseUnits("500"));
+
+      await lrtInstance
+        .connect(addr2)
+        .approve(assetMarketplaceInstance.address, 0); //addr1.address
+
+      await expect(
+        assetMarketplaceInstance
+          .connect(addr2)
+          .fulfillOrder(
+            orderIdHash,
+            seller,
+            status,
+            assetName,
+            expireDate,
+            price,
+            sellUnit,
+            sign1.v,
+            sign1.r,
+            sign1.s
+          )
+      ).to.be.revertedWith(AssetMarketplaceErrorMsg.FUEL_CANNOT_BE_SOLD);
+    });
+
+    it("should not allow to buy user off-chain assets token when user wants to buy twice", async function () {
+      const price = ethers.utils.parseUnits("10");
+      const assetName = Helper.stringToBytes16("Ar");
+      const expireDate = 0;
+      const sellUnit = 2;
+      const status = 0;
+      const seller = addr1.address;
+      const buyer = addr2.address;
+      const orderIdHash = ethers.utils.keccak256(Buffer.from("0"));
+      const privateKey = Uint8Array.from(
+        Buffer.from(
+          "dbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97",
+          "hex"
+        )
+      );
+
+      let sign1 = await createMsgWithSig(
+        assetMarketplaceInstance,
+        privateKey,
+        seller,
+        assetName,
+        expireDate,
+        price,
+        sellUnit
+      );
+
+
+      await lrtInstance
+        .connect(distributor)
+        .transferToken(buyer, ethers.utils.parseUnits("500"));
+
+      await lrtInstance
+        .connect(addr2)
+        .approve(assetMarketplaceInstance.address, price); //addr1.address
+
+      await assetMarketplaceInstance
+        .connect(addr2)
+        .fulfillOrder(
+          orderIdHash,
+          seller,
+          status,
+          assetName,
+          expireDate,
+          price,
+          sellUnit,
+          sign1.v,
+          sign1.r,
+          sign1.s
+        );
+
+      await expect(
+        assetMarketplaceInstance
+          .connect(addr2)
+          .fulfillOrder(
+            orderIdHash,
+            seller,
+            status,
+            assetName,
+            expireDate,
+            price,
+            sellUnit,
+            sign1.v,
+            sign1.r,
+            sign1.s
+          )
+      ).to.be.revertedWith(AssetMarketplaceErrorMsg.ORDER_ALREADY_FUL_FILLED);
     });
   });
 
@@ -1243,7 +1177,7 @@ describe("Asset Marketplace contract", function () {
           landRockerInstance.address,
           lrtVestingInstance.address,
         ],
-        { initializer: "__AssetMarketplace_init", kind: "uups" }
+        { initializer: "initializeAssetMarketplace", kind: "uups" }
       );
 
       await oldContract.deployed();
@@ -1253,39 +1187,21 @@ describe("Asset Marketplace contract", function () {
         AssetMarketplaceUpgraded,
         {
           call: {
-            fn: "__AssetMarketplaceUpgraded_init",
+            fn: "initializeAssetMarketplace",
             args: [
               arInstance.address,
               lrtInstance.address,
               landRockerInstance.address,
               lrtVestingInstance.address,
+              "hi i am upgraded",
             ],
           },
         }
       );
     });
 
-    it("Old contract should return old greeting", async function () {
-      expect(await oldContract.greeting()).to.equal(
-        "Hello, upgradeable world!"
-      );
-    });
-
-    it("Old contract cannot mint NFTs", async function () {
-      try {
-        oldContract.greetingNew();
-      } catch (error) {
-        expect(error.message === "oldContract.greetingNew is not a function");
-      }
-    });
-
-    it("New Contract Should return the old & new greeting and token name after deployment", async function () {
-      expect(await upgradedContract.greeting()).to.equal(
-        "Hello, upgradeable world!"
-      );
-      expect(await upgradedContract.greetingNew()).to.equal(
-        "New Upgradeable World!"
-      );
+    it("New Contract Should return the new contract return the new state variable", async function () {
+      expect(await upgradedContract.greeting()).to.equal("hi i am upgraded");
     });
   });
 });

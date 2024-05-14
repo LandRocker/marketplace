@@ -12,14 +12,18 @@ interface ILRTDistributor {
      * @param _amount Amount of tokens distributed
      * @param _to Recipient address
      */
-    event TokenDistributed(bytes32 poolName, uint256 _amount, address _to);
+    event TokenDistributed(
+        bytes32 indexed poolName,
+        uint256 indexed _amount,
+        address indexed _to
+    );
 
     /**
      * @dev Emitted when tokens are swapped from the "Game" pool to an address
      * @param _to Recipient address
      * @param _amount Amount of tokens swapped
      */
-    event TokenSwapped(address _to, uint256 _amount);
+    event TokenSwapped(address indexed _to, uint256 indexed _amount);
 
     /**
      * @dev Emitted when liquidity is transferred between pools
@@ -28,9 +32,9 @@ interface ILRTDistributor {
      * @param _amount Amount of liquidity transferred
      */
     event TransferredLiquidity(
-        bytes32 _fromPoolName,
-        bytes32 _destPoolName,
-        uint256 _amount
+        bytes32 indexed _fromPoolName,
+        bytes32 indexed _destPoolName,
+        uint256 indexed _amount
     );
 
     /**
@@ -51,7 +55,7 @@ interface ILRTDistributor {
      * @param _to Recipient address
      * @param _amount Amount of tokens to swap
      */
-    function swap(address _to, uint256 _amount) external;
+    function swap(address _to, uint256 _amount) external returns (bool);
 
     /**
      * @dev Transfer remaining liquidity from a pool to the "Game" pool

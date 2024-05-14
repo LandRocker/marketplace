@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.6;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -23,7 +23,7 @@ contract LRT is ERC20, ILRT {
     uint256 public constant SUPPLY = 1e10 * (10 ** DECIMALS);
 
     /// @dev Reference to the access restriction contract
-    IAccessRestriction public accessRestriction;
+    IAccessRestriction public immutable accessRestriction;
 
     /// @dev Modifier: Only accessible by distributors
     modifier onlyDistributor() {
@@ -50,10 +50,10 @@ contract LRT is ERC20, ILRT {
         address _to,
         uint256 _amount
     ) external override onlyDistributor returns (bool) {
-        require(_amount > 0, "LRT::Insufficient amount, equal to zero");
+        require(_amount > 0, "LRT::Insufficient amount:equal to zero");
         require(
             !accessRestriction.isOwner(_to),
-            "LRT::LRT cannot transfer to owner"
+            "LRT::LRT can't transfer to owner"
         );
         require(
             balanceOf(address(this)) >= _amount,

@@ -1,15 +1,12 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.6;
+// SPDX-License-Identifier: GPL-3.0
+pragma solidity 0.8.6;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IAccessRestriction} from "../access/IAccessRestriction.sol";
 import {ILRTVesting} from "./../vesting/ILRTVesting.sol";
 import {ILRTPreSale} from "./ILRTPreSale.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ILRT} from "./../tokens/erc20/ILRT.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-
-// import "hardhat/console.sol";
 
 /**
  * @title LRTPreSale contract
@@ -119,6 +116,9 @@ contract LRTPreSale is ReentrancyGuard, ILRTPreSale {
      */
     IAccessRestriction public accessRestriction;
 
+    // Events
+    // Inherited from ILRTPreSale interface
+
     // Modifiers
 
     /**
@@ -143,15 +143,6 @@ contract LRTPreSale is ReentrancyGuard, ILRTPreSale {
         accessRestriction.ifScript(msg.sender);
         _;
     }
-
-    /**
-     * @dev Reverts if caller is not script
-     */
-    modifier onlyAdminOrScript() {
-        accessRestriction.ifAdminOrScript(msg.sender);
-        _;
-    }
-
     /**
      * @dev Reverts if caller is not wert
      */
@@ -176,7 +167,7 @@ contract LRTPreSale is ReentrancyGuard, ILRTPreSale {
     modifier onlyValidToken(bytes16 _token) {
         require(
             paymentTokens[_token] != address(0),
-            "PreSale::Payment token is not valid"
+            "PreSale::payment token is not valid"
         );
         _;
     }
@@ -186,15 +177,10 @@ contract LRTPreSale is ReentrancyGuard, ILRTPreSale {
      * @param _amount The amount to validate
      */
     modifier onlyValidAmount(uint256 _amount) {
-        require(_amount > 0, "PreSale::Insufficient amount, equal to zero");
+        require(_amount > 0, "PreSale::Insufficient amount:equal to zero");
         _;
     }
 
-    /**
-     * @dev LRTPreSale contract constructor
-     * @param _lrtVestingAddress Address of LRTVesting contract
-     * @param _accessRestrictionAddress Address of access restriction contract
-     */
     constructor(address _lrtVestingAddress, address _accessRestrictionAddress) {
         accessRestriction = IAccessRestriction(_accessRestrictionAddress);
         lrtVesting = ILRTVesting(_lrtVestingAddress);
@@ -219,7 +205,7 @@ contract LRTPreSale is ReentrancyGuard, ILRTPreSale {
         uint256 price = _getTokenPrice(bytes16("MATIC"), _roundID);
         require(
             msg.value >= (totalCost / price) * 1e8,
-            "PreSale::Insufficient balance"
+            "PreSale::insufficient balance"
         );
 
         // Emit event
@@ -233,7 +219,8 @@ contract LRTPreSale is ReentrancyGuard, ILRTPreSale {
      * @dev Purchases LRT with ERC20 token
      * @param _lrtAmount Number of LRT tokens to purchase
      * @param _token ERC20 token to use for payment
-     * @param _roundID roundId
+    * @param _roundID roundId
+
      */
     function buyTokenByERC20Token(
         uint256 _lrtAmount,
@@ -261,7 +248,7 @@ contract LRTPreSale is ReentrancyGuard, ILRTPreSale {
         require(
             IERC20(tokenAddress).allowance(msg.sender, address(this)) >=
                 approvedAmount,
-            "PreSale::Allowance error"
+            "PreSale::allowance error"
         );
 
         // Transfer tokens
@@ -272,7 +259,7 @@ contract LRTPreSale is ReentrancyGuard, ILRTPreSale {
         );
 
         // Validate transfer
-        require(success, "PreSale::Fail transfer to contract");
+        require(success, "PreSale::fail transfer to contract");
 
         // Emit event
         emit PurchasedByERC20Token(
@@ -310,7 +297,7 @@ contract LRTPreSale is ReentrancyGuard, ILRTPreSale {
         require(
             IERC20(tokenAddress).allowance(msg.sender, address(this)) >=
                 totalCost,
-            "PreSale::Allowance error"
+            "PreSale::allowance error"
         );
 
         // Transfer tokens
@@ -321,7 +308,7 @@ contract LRTPreSale is ReentrancyGuard, ILRTPreSale {
         );
 
         // Validate transfer
-        require(success, "PreSale::Fail transfer to contract");
+        require(success, "PreSale::fail transfer to contract");
 
         // Emit event
         emit PurchasedByStableCoin(
@@ -399,14 +386,14 @@ contract LRTPreSale is ReentrancyGuard, ILRTPreSale {
         // Validate balance
         require(
             IERC20(_tokenAddress).balanceOf(address(this)) >= _amount,
-            "PreSale::Insufficient balance"
+            "PreSale::insufficient balance"
         );
 
         // Withdraw tokens
         bool success = IERC20(_tokenAddress).transfer(treasury, _amount);
 
         // Validate transfer
-        require(success, "PreSale::Withdraw stablecoin failure");
+        require(success, "PreSale::withdraw stablecoin failure");
 
         // Emit event
         emit WithdrawedBalance(treasury, _amount, _tokenAddress);
@@ -421,7 +408,7 @@ contract LRTPreSale is ReentrancyGuard, ILRTPreSale {
     ) external override onlyAdmin onlyValidAmount(_amount) nonReentrant {
         require(
             _amount <= address(this).balance,
-            "PreSale::Insufficient balance"
+            "PreSale::insufficient balance"
         );
         payable(treasury).transfer(_amount);
         emit WithdrawedCoinBalance(treasury, _amount);
@@ -447,7 +434,7 @@ contract LRTPreSale is ReentrancyGuard, ILRTPreSale {
      */
     function addToWhiteList(
         address _addr
-    ) external override onlyAdminOrScript validAddress(_addr) {
+    ) external override onlyAdmin validAddress(_addr) {
         eligibleAddresses[_addr] = true;
 
         emit EligibleAddressAdded(_addr);
@@ -563,7 +550,7 @@ contract LRTPreSale is ReentrancyGuard, ILRTPreSale {
             // Ensure purchase is allowed
             require(
                 _canMakePurchase(_buyer),
-                "LRTPreSale::You have reached the daily buying limit"
+                "LRTPreSale::You've reached the daily buying limit"
             );
 
             // Update last purchase timestamp
@@ -588,7 +575,7 @@ contract LRTPreSale is ReentrancyGuard, ILRTPreSale {
         );
 
         // Revert if failure
-        require(success, "PreSale::Fail create vesting");
+        require(success, "PreSale::fail create vesting");
     }
 
     /**
@@ -629,7 +616,7 @@ contract LRTPreSale is ReentrancyGuard, ILRTPreSale {
     ) private view returns (uint256) {
         //check sale status
 
-        require(isActive, "LRTPreSale::Sale is not active");
+        require(isActive, "LRTPreSale::sale is not active");
 
         // Validate purchase amount
         _validateAmount(_lrtAmount);
@@ -683,7 +670,7 @@ contract LRTPreSale is ReentrancyGuard, ILRTPreSale {
         // Check total value doesn't exceed limit
         require(
             oldLrtValue + _lrtvalue <= userBalanceLimit,
-            "PreSale::You have reached the max lrt amount"
+            "PreSale::You've reached the max lrt amount"
         );
     }
 
@@ -702,7 +689,7 @@ contract LRTPreSale is ReentrancyGuard, ILRTPreSale {
         );
 
         (uint80 roundID, , , , ) = priceFeed.latestRoundData();
-        require(roundID - _roundID <= 600, "LRTPreSale::Price too old");
+        require(roundID - _roundID <= 600, "LRTPreSale::Price Too Old");
 
         (, int price, , , ) = priceFeed.getRoundData(_roundID);
 

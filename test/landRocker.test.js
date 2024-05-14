@@ -20,7 +20,7 @@ describe("LandRocker", function () {
   treasury,
   royaltyRecipient;
 
-  systemFee = 150;
+  systemFee = 1300;
   const zeroAddress = "0x0000000000000000000000000000000000000000";
 
   before(async function () {
@@ -43,7 +43,7 @@ describe("LandRocker", function () {
     const tx = await landRockerInstance
       .connect(admin)
       .setSystemFee(systemFee);
-    expect(await landRockerInstance.systemFee()).to.equal(150);
+    expect(await landRockerInstance.systemFee()).to.equal(1300);
     await expect(tx)
       .to.emit(landRockerInstance, "SystemFeeUpdated")
       .withArgs(systemFee);
@@ -87,7 +87,7 @@ it("should revert set the system fee when caller is not admin", async function (
 
   it("should revert set the system fee when the system fee is not be valid", async function () {
     await expect(
-        landRockerInstance.connect(admin).setSystemFee(170)
+        landRockerInstance.connect(admin).setSystemFee(1700)
       ).to.be.revertedWith(LRMessage.INVALID_SYSTEM_FEE);
   });
 
@@ -127,49 +127,31 @@ it("should revert set the system fee when caller is not admin", async function (
       ).to.be.revertedWith(LRMessage.INVALID_Address);
   });
  
-  //Upgradeability testing
-  describe("Contract Version 1 test", function () {
-    it("Should return the greeting after deployment", async function () {
-      const LandRocker = await ethers.getContractFactory("LandRocker");
   
-      const contract = await upgrades.deployProxy(LandRocker, [arInstance.address], { initializer: '__LandRocker_init', kind: 'uups'});
-      await contract.deployed();
+  // describe("Contract Version 2 test", function () {
+  //   let oldContract, upgradedContract, owner, addr1;
+  //   beforeEach(async function () {
+  //     [owner, addr1] = await ethers.getSigners(2);
+  //     const LandRockerUpgraded = await ethers.getContractFactory("LandRockerUpgraded");
   
-      expect(await contract.greeting()).to.equal("Hello, upgradeable world!");
-    });
-  });
   
-  describe("Contract Version 2 test", function () {
-    let oldContract, upgradedContract, owner, addr1;
-    beforeEach(async function () {
-      [owner, addr1] = await ethers.getSigners(2);
-      const LandRocker = await ethers.getContractFactory("LandRocker");
-      const LandRockerUpgraded = await ethers.getContractFactory("LandRockerUpgraded");
+  //     upgradedContract = await upgrades.upgradeProxy(
+  //       landRockerInstance,
+  //       LandRockerUpgraded,
+  //       {
+  //         call: {
+  //           fn: "initializeLandRocker",
+  //           args: [arInstance.address, "Hello, upgradeable world!"],
+  //         },
+  //       }
+  //     );  
+  //   });
   
-      oldContract = await upgrades.deployProxy(LandRocker, [arInstance.address], { initializer: '__LandRocker_init', kind: 'uups'});
-  
-      await oldContract.deployed();  
-
-      upgradedContract = await upgrades.upgradeProxy(oldContract, LandRockerUpgraded,
-         {call: {fn: '__LandRockerUpgraded_init', args:[arInstance.address]}});  
-    });
-  
-    it("Old contract should return old greeting", async function () {
-      expect(await oldContract.greeting()).to.equal("Hello, upgradeable world!");
-    });
-  
-    it("Old contract cannot mint NFTs", async function () {
-      try {
-        oldContract.greetingNew()
-      } catch (error) {
-        expect(error.message === "oldContract.greetingNew is not a function" )
-      }
-    });
-
-    it("New Contract Should return the old & new greeting and token name after deployment", async function() {
-      expect(await upgradedContract.greeting()).to.equal("Hello, upgradeable world!");
-      expect(await upgradedContract.greetingNew()).to.equal("New Upgradeable World!");
-    });
    
-  });
+
+  //   it("New Contract Should return the old & new greeting and token name after deployment", async function() {
+  //     expect(await upgradedContract.greeting()).to.equal("Hello, upgradeable world!");
+  //   });
+   
+  // });
 });

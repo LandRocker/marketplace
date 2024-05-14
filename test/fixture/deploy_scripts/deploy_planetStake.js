@@ -1,26 +1,28 @@
 const hre = require("hardhat");
 const { ethers, upgrades } = require("hardhat");
 
-async function deploy_planetStake(landRockerERC1155Instance,arInstance, lrtDistributorInstance) {
-
+async function deploy_planetStakeInstance(
+  landRockerERC1155Instance,
+  arInstance,
+  lrtInstance
+) {
   //deploy PlanetStake
   const PlanetStake = await ethers.getContractFactory("PlanetStake");
   const planetStakeInstance = await upgrades.deployProxy(
     PlanetStake,
     [
       landRockerERC1155Instance.address,
-      arInstance.address, 
-      lrtDistributorInstance.address
+      arInstance.address,
+      lrtInstance.address,
     ],
     {
       kind: "uups",
-      initializer: "__PlanetStake_init",
+      initializer: "initializePlanetStake",
     }
   );
- 
+
   await planetStakeInstance.deployed();
 
   return planetStakeInstance;
 }
-module.exports = deploy_planetStake;
- 
+module.exports = deploy_planetStakeInstance;

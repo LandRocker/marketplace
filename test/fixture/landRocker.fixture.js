@@ -21,7 +21,7 @@ async function landRockerFixture() {
   const landRockerInstance = await deploy_landRocker(arInstance);
   //await landRockerInstance.deployed();
 
-  await landRockerInstance.connect(admin).setSystemFee(150);
+  await landRockerInstance.connect(admin).setSystemFee(1300);
   await landRockerInstance.connect(admin).setTreasuryAddress(treasury.address);
   await landRockerInstance
     .connect(admin)

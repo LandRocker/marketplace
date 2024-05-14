@@ -2,7 +2,7 @@ const hre = require("hardhat");
 const { ethers } = require("hardhat");
 
 async function deploy_minted721_Marketplace() {
-  console.log("Deploying Minted1155Marketplace contract...");
+  console.log("Deploying Minted721Marketplace contract...");
 
   const Minted721Marketplace = await ethers.getContractFactory(
     "Minted721Marketplace"
@@ -10,15 +10,13 @@ async function deploy_minted721_Marketplace() {
   const minted721MarketplaceInstance = await upgrades.deployProxy(
     Minted721Marketplace,
     [
-      "0x7A3c66F2F3C16AEbB69373e244846F12eaD9ADe4",
-      "0xB21bb1Ab0012236E3CF889FCcE00a4F3d9aF55c4",
-      "0xcA498643614310935da320b0C1104305084DB4C7",
-      "0x5FEE19700a720008B5f7Df7E09A9cABa2BD0b95e",
-      "0x6f4592838fcE61ed1eFCf54E3545530a7b0a822C",
+      "0xf81787851069F394dFC744496BBaE29388502f17", //arInstance
+      "0x0577a2d7242Ee55008fF20d75BeD4dbAebC2664A", //lrtInstance
+      "0x712ad1a067d79048d3d7F965B9faD97B14EF6654", //landRockerInstance
     ],
     {
       kind: "uups",
-      initializer: "__Minted721Marketplace_init",
+      initializer: "initilizeMinted721Marketplace",
     }
   );
 

@@ -65,7 +65,7 @@ describe("LRTDistributor contract", function () {
       expect(newPoolUsedBalance).to.equal(amount.add(oldPoolUsedBalance));
     });
 
-    it("should not allow to distribute token when caller is not vesting manager", async function () {
+    it("should not allow to distribute token when caller is not approved contract", async function () {
       const amount = ethers.utils.parseUnits("100", 18);
 
       await expect(
@@ -101,6 +101,35 @@ describe("LRTDistributor contract", function () {
           )
       ).to.be.revertedWith(LRTDistroErrorMsg.POOL_INSUFFICIENT_BALANCE);
     });
+
+    it("should not allow to distribute when the dest address is zero address", async function () {
+      const amount = ethers.utils.parseUnits("100", 18);
+     
+
+      await expect(
+        lrtDistributorInstance
+          .connect(approvedContract)
+          .distribute(
+            ethers.utils.formatBytes32String("Sale"),
+            amount,
+            zeroAddress
+          )
+      ).to.be.revertedWith(LRTDistroErrorMsg.INVALID_ADDRESS);
+    });
+
+      it("should not allow to distribute when the dest address is distributor address", async function () {
+        const amount = ethers.utils.parseUnits("100", 18);
+
+        await expect(
+          lrtDistributorInstance
+            .connect(approvedContract)
+            .distribute(
+              ethers.utils.formatBytes32String("Sale"),
+              amount,
+              lrtDistributorInstance.address
+            )
+        ).to.be.revertedWith(LRTDistroErrorMsg.NOT_VALID_DESTINATION);
+      });
   });
 
   describe("swap tokens", function () {
@@ -129,6 +158,24 @@ describe("LRTDistributor contract", function () {
         lrtDistributorInstance.connect(owner).swap(addr1.address, amount)
       ).to.be.revertedWith(AccessErrorMsg.CALLER_NOT_SCRIPT);
     });
+
+    it("should not allow to swap token dest address is zero address", async function () {
+      const amount = ethers.utils.parseUnits("100", 18);
+
+      await expect(
+        lrtDistributorInstance.connect(script).swap(zeroAddress, amount)
+      ).to.be.revertedWith(LRTDistroErrorMsg.INVALID_ADDRESS);
+    });
+
+      it("should not allow to swap token dest address is distributor address", async function () {
+        const amount = ethers.utils.parseUnits("100", 18);
+
+        await expect(
+          lrtDistributorInstance
+            .connect(script)
+            .swap(lrtDistributorInstance.address, amount)
+        ).to.be.revertedWith(LRTDistroErrorMsg.NOT_VALID_DESTINATION);
+      });
 
     it("should not allow to swap when the liquidity pool is over", async function () {
       const amount = ethers.utils.parseUnits("100", 18);

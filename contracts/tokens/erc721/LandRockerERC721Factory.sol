@@ -1,117 +1,111 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.6;
+// SPDX-License-Identifier: GPL-3.0
+pragma solidity 0.8.6;
+
 import {Counters} from "@openzeppelin/contracts/utils/Counters.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
-import "./LandRockerERC721.sol";
-import "./ILandRockerERC721.sol";
+
+import {IAccessRestriction} from "./../../access/IAccessRestriction.sol";
+import {ILandRockerERC721} from "./ILandRockerERC721.sol";
 import {ILandRockerERC721Factory} from "./ILandRockerERC721Factory.sol";
 
-// import {ILRT} from "./../erc20/ILRT.sol";
-// import {ILRTDistributor} from "./../erc20/lrtDistributor/ILRTDistributor.sol";
-// import {ILandRocker} from "./../../landrocker/ILandRocker.sol";
-// import {ILRTVesting} from "./../../vesting/ILRTVesting.sol";
-import {INonMinted721Marketplace} from "./../../marketplace/nonMinted721/INonMinted721Marketplace.sol";
+// import "hardhat/console.sol";
 
-import "hardhat/console.sol";
-
+/**
+ * @title LandRockerERC721Factory
+ * @dev A contract for creating and managing LandRockerERC721 clones.
+ * This contract implements the ILandRockerERC721Factory interface.
+ */
 contract LandRockerERC721Factory is ILandRockerERC721Factory {
     using Counters for Counters.Counter;
 
+    // Stores the addresses of LandRockerERC721 clones created by this factory.
     mapping(uint256 => address) public landRockerERC721Clones;
+    // Stores the creators (owners) of LandRockerERC721 clones.
     mapping(address => address) public landRockerERC721Creators;
+    // Stores the creators (owners) of LandRockerERC721 clones.
     mapping(bytes32 => bool) public isUsedCollection;
+    // The address of the implementation contract used for cloning.
     address public implementionAddress;
-    IAccessRestriction public accessRestriction;
-    ILandRockerERC721 _landrocker721;
 
-    // ILRT lrt;
-    // ILRTDistributor lrtDistributor;
-    // ILandRocker landRocker;
-    // ILRTVesting lrtVesting;
-    INonMinted721Marketplace public nonMinted721Marketplace;
+    // The access restriction contract.
+    IAccessRestriction public immutable accessRestriction;
+    // Reference to the ILandRockerERC721 interface.
+    ILandRockerERC721 public landrocker721;
 
     Counters.Counter private _cloneId;
 
-    /** NOTE modifier to check msg.sender has admin role */
+    /**
+     * @dev Modifier to ensure only an admin can call the function.
+     */
     modifier onlyAdmin() {
         accessRestriction.ifAdmin(msg.sender);
         _;
     }
 
-    constructor(address _acessRestriction, address _nonMinted721Marketplace) {
-        accessRestriction = IAccessRestriction(_acessRestriction);
-        nonMinted721Marketplace = INonMinted721Marketplace(
-            _nonMinted721Marketplace
-        );
+    /**
+     * @dev Constructor to initialize the factory with the address of the access restriction contract.
+     * @param _accessRestriction The address of the access restriction contract.
+     */
+    constructor(address _accessRestriction) {
+        accessRestriction = IAccessRestriction(_accessRestriction);
     }
 
+    /**
+     * @dev Sets the address of the implementation contract used for cloning.
+     * @param _implementionAddress The address of the implementation contract.
+     */
     function setImplementationAddress(
         address _implementionAddress
     ) external override onlyAdmin {
         implementionAddress = _implementionAddress;
     }
 
+    /**
+     * @dev Creates a new LandRockerERC721 clone with the provided parameters.
+     * @param _name The name of the collection.
+     * @param _symbol The symbol of the collection.
+     * @param _receiver The address of the royalty recipient.
+     * @param _feeNumerator The numerator of the royalty fee.
+     * @param _baseURI The base URI for token metadata.
+     */
     function createLandRockerERC721(
         string memory _name,
         string memory _symbol,
         address _receiver,
-        uint96 feeNumerator,
-        string memory baseURI_
+        uint96 _feeNumerator,
+        string memory _baseURI
     ) external override onlyAdmin {
         require(
             isUsedCollection[keccak256(abi.encodePacked(_name))] == false,
-            "duplicate collection name"
+            "LandRockerERC721::Duplicate collection name"
         );
-        _landrocker721 = ILandRockerERC721(Clones.clone(implementionAddress));
 
-        // lrt = ILRT(address(accessRestriction));
-        // address accessRestrictionadd = address(accessRestriction);
-        // address lrt1 = address(lrt);
-        // lrtDistributor = ILRTDistributor(accessRestrictionadd, lrt1);
-        // landRocker = ILandRocker(address(accessRestriction));
-        // lrtVesting = ILRTVesting(
-        //     address(lrtDistributor),
-        //     address(accessRestriction)
-        // );
-        // nonMinted721Marketplace = NonMinted721Marketplace(
-        //     address(accessRestriction),
-        //     address(lrt),
-        //     address(landRocker),
-        //     address(lrtVesting)
-        // );
+        // Clone a new LandRockerERC721 contract from the provided implementation.
+        landrocker721 = ILandRockerERC721(Clones.clone(implementionAddress));
 
-        console.log(implementionAddress, "implementionAddress");
-
-        _landrocker721.erc721Init(
+        // Initialize the cloned contract with the provided parameters.
+        landrocker721.erc721Init(
             _name,
             _symbol,
             address(accessRestriction),
             _receiver,
-            feeNumerator,
-            baseURI_
+            _feeNumerator,
+            _baseURI
         );
-        landRockerERC721Creators[address(_landrocker721)] = msg.sender;
 
-        landRockerERC721Clones[_cloneId.current()] = (address(_landrocker721));
+        // Record the creator of this clone.
+        landRockerERC721Creators[address(landrocker721)] = msg.sender;
+        // Store the address of the cloned contract and mark the collection name as used.
+        landRockerERC721Clones[_cloneId.current()] = (address(landrocker721));
 
         isUsedCollection[keccak256(abi.encodePacked(_name))] = true;
         _cloneId.increment();
 
-        uint256 startGas = gasleft();
-        console.log(startGas, "Used gas in Factory");
-        // ...some code here...
-        nonMinted721Marketplace.setLandRockerCollection(
-            address(_landrocker721)
+        emit LandRockerERC721Created(
+            address(landrocker721),
+            _name,
+            _symbol,
+            _baseURI
         );
-        uint256 gasUsed = startGas - gasleft();
-        console.log(gasUsed, "Used gas in Factory");
-
-        emit LandRockerERC721Created(address(_landrocker721));
-    }
-
-    function getLandRockerERC721Clones(
-        uint256 cloneId
-    ) external override onlyAdmin returns (address) {
-        return landRockerERC721Clones[cloneId];
     }
 }

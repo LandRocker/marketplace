@@ -12,7 +12,7 @@ const {
 } = require("@nomicfoundation/hardhat-network-helpers");
 const { AccessErrorMsg, LR721Message } = require("./messages");
 
-describe("LandRockerERC721", function () {
+describe("LandRockerERC721Factory", function () {
   let landRockerERC721Instance,
     landRockerERC721FactoryInstance,
     arInstance,
@@ -31,9 +31,15 @@ describe("LandRockerERC721", function () {
 
   let zeroAddress = "0x0000000000000000000000000000000000000000";
 
+  let category = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes("MARKETPLACE_721")
+  );
+
+
   // test to clone the smart contract
   before(async function () {
     ({
+      nonMinted721MarketplaceInstance,
       landRockerERC721Instance,
       landRockerERC721FactoryInstance,
       arInstance,
@@ -55,7 +61,7 @@ describe("LandRockerERC721", function () {
         "landRocker-one",
         "LR721-one",
         royaltyRecipient.address,
-        1000,
+        200,
         "https://srvs20.landrocker.io/game_service/bc/get/uniq/token/data?token_id="
       );
     await landRockerERC721FactoryInstance
@@ -64,7 +70,7 @@ describe("LandRockerERC721", function () {
         "landRocker-two",
         "LR721-two",
         royaltyRecipient.address,
-        1000,
+        200,
         "https://srvs20.landrocker.io/game_service/bc/get/uniq/token/data?token_id="
       );
     await landRockerERC721FactoryInstance
@@ -73,27 +79,13 @@ describe("LandRockerERC721", function () {
         "landRocker-three",
         "LR721-three",
         royaltyRecipient.address,
-        1000,
+        200,
         "https://srvs20.landrocker.io/game_service/bc/get/uniq/token/data?token_id="
       );
 
-    console.log(
-      await landRockerERC721FactoryInstance.landRockerERC721Clones(0),
-      "C0"
-    );
-
-    console.log(
-      await landRockerERC721FactoryInstance.landRockerERC721Clones(1),
-      "C1"
-    );
-
-    console.log(
-      await landRockerERC721FactoryInstance.landRockerERC721Clones(2),
-      "C2"
-    );
-
-    const landRockerERC721Instance1 =
-      await landRockerERC721FactoryInstance.landRockerERC721Clones(0);
+    const landRockerERC721Instance1 = await landRockerERC721FactoryInstance
+      .connect(admin)
+      .landRockerERC721Clones(0);
     const landRockerERC721Instance2 =
       await landRockerERC721FactoryInstance.landRockerERC721Clones(1);
     const landRockerERC721Instance3 =
@@ -104,7 +96,6 @@ describe("LandRockerERC721", function () {
     const clone2 = cloneContract.attach(landRockerERC721Instance2);
     const clone3 = cloneContract.attach(landRockerERC721Instance3);
 
-    //  console.log(await clone1.name(), "clone1.name()");
 
     expect(await clone1.name()).to.equal("landRocker-one");
     expect(await clone2.name()).to.equal("landRocker-two");
@@ -120,11 +111,9 @@ describe("LandRockerERC721", function () {
 
     const tokenId = await clone
       .connect(approvedContract)
-      .callStatic.safeMint(owner.address);
+      .callStatic.safeMint(owner.address,category);
 
-    const tx = await clone
-      .connect(approvedContract)
-      .safeMint(owner.address);
+    const tx = await clone.connect(approvedContract).safeMint(owner.address,category);
 
     await expect(tx)
       .to.emit(clone, "Transfer")
@@ -132,8 +121,8 @@ describe("LandRockerERC721", function () {
 
     expect(await clone.exists(tokenId)).to.be.true;
   });
-  
-  it("should revert safe mint when caller is not approvedContract", async function () {     
+
+  it("should revert safe mint when caller is not approvedContract", async function () {
     const landRockerERC721Instance1 =
       await landRockerERC721FactoryInstance.landRockerERC721Clones(0);
 
@@ -141,8 +130,7 @@ describe("LandRockerERC721", function () {
     const clone = cloneContract.attach(landRockerERC721Instance1);
 
     await expect(
-      clone.connect(treasury).safeMint(owner.address)
+      clone.connect(treasury).safeMint(owner.address,category)
     ).to.be.revertedWith(AccessErrorMsg.CALLER_NOT_APPROVED_CONTRACT);
   });
-  
 });

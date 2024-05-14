@@ -1,23 +1,53 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.6;
 
 import {ERC1155Supply} from "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {CountersUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 import {IAccessRestriction} from "../../access/IAccessRestriction.sol";
+import {LandRockerERC2981} from "../../royalty/LandRockerERC2981.sol";
 import {ILandRockerERC1155} from "./ILandRockerERC1155.sol";
 
-contract LandRockerERC1155 is ERC1155Supply, ERC2981, ILandRockerERC1155 {
-    // Counter for generating unique token IDs
+contract LandRockerERC1155 is
+    ERC1155Supply,
+    LandRockerERC2981,
+    ILandRockerERC1155,
+    Initializable
+{
+    // Counter for generating unique token Ids
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
-    CountersUpgradeable.Counter private _id;
     // Access control contract reference
     IAccessRestriction public accessRestriction;
+
+    /**
+     * @dev Public state variable representing the name of the token.
+     */
+    string public override tokenName;
+
+    /**
+     * @dev Public state variable representing the symbol of the token.
+     */
+    string public override tokenSymbol;
+
+    CountersUpgradeable.Counter private _tokenIdCounter;
+
+    /**
+     * @dev Mapping to store floor prices for each tokenId
+     */
+    mapping(uint256 => uint256) public override floorPrices;
+
+    /**
+     * @dev Indicates a failure with the `operator`’s approval. Used in transfers.
+     * @param operator Address that may be allowed to operate on tokens without being their owner.
+     * @param owner Address of the current owner of a token.
+     */
+    error ERC1155MissingApprovalForAll(address operator, address owner);
 
     /**
      * @dev Reverts if address is invalid
@@ -33,6 +63,14 @@ contract LandRockerERC1155 is ERC1155Supply, ERC2981, ILandRockerERC1155 {
      */
     modifier onlyAdmin() {
         accessRestriction.ifAdmin(msg.sender);
+        _;
+    }
+
+    /**
+     * @dev Modifier to ensure only approved contracts can call the function.
+     */
+    modifier onlyAdminOrApprovedContract() {
+        accessRestriction.ifAdminOrApprovedContract(msg.sender);
         _;
     }
 
@@ -56,32 +94,44 @@ contract LandRockerERC1155 is ERC1155Supply, ERC2981, ILandRockerERC1155 {
         _;
     }
 
+    constructor() ERC1155("") {}
+
     /**
-     * @dev Constructor to initialize the LandRockerERC1155 contract
-     * @param _accessRestrictionAddress Address of the access restriction contract
-     * @param _receiver is the address that will receive royalties when tokens are traded
-     * @param feeNumerator represents the percentage of the transaction value that will be collected as royalties.
-     * @param _baseURI representing the base URI for metadata associated with tokens.
+     * @dev Initializes the LandRockerERC1155 contract with the provided parameters.
+     * @param _name The name of the contract.
+     * @param _symbol The symbol of the contract.
+     * @param _receiver The address of the royalty recipient.
+     * @param _feeNumerator The numerator of the royalty fee.
+     * @param _baseTokenURI The base URI for token metadata.
+     * @param _accessRestrictionAddress The address of the access restriction contract.
      */
-    constructor(
-        address _accessRestrictionAddress,
+    function erc1155Init(
+        string memory _name,
+        string memory _symbol,
         address _receiver,
-        uint96 feeNumerator,
-        string memory _baseURI
-    ) ERC1155(_baseURI) {
+        uint96 _feeNumerator,
+        string memory _baseTokenURI,
+        address _accessRestrictionAddress
+    ) external override initializer {
+        tokenName = _name;
+        tokenSymbol = _symbol;
+        _setURI(_baseTokenURI);
         accessRestriction = IAccessRestriction(_accessRestrictionAddress);
-        _setDefaultRoyalty(_receiver, feeNumerator);
+        _setDefaultRoyalty(_receiver, _feeNumerator);
+        emit RoyaltySet(_receiver, _feeNumerator);
     }
 
     /**
      * @dev Mint tokens and assign them to a given address.
      * @param _to Address to receive the minted tokens.
      * @param _amount The amount to mint.
-     * @return currentId The ID of the newly minted tokens.
+     * @param _category Identifies the token's use case, such as auction or staking.
+     * @return currentId The Id of the newly minted tokens.
      */
     function safeMint(
         address _to,
-        uint256 _amount
+        uint256 _amount,
+        bytes32 _category
     )
         external
         override
@@ -90,26 +140,31 @@ contract LandRockerERC1155 is ERC1155Supply, ERC2981, ILandRockerERC1155 {
         onlyValidAmount(_amount)
         returns (uint256)
     {
-        uint256 currentId = _id.current();
+        uint256 currentId = _tokenIdCounter.current();
 
         // Mint the specified amount of tokens to the given address
         _mint(_to, currentId, _amount, "");
-        // Increment the token ID counter for uniqueness
-        _id.increment();
+        // Increment the token Id counter for uniqueness
+        _tokenIdCounter.increment();
+
+        emit Token1155Distributed(_to, _tokenIdCounter.current(), _amount,_category);
+
 
         return currentId;
     }
 
     /**
-     * @dev Increase the amount of an already minted token.
-     * @param _tokenId The ID of the token.
+     * @dev Mints additional tokens to a specified address under a given category.
      * @param _to Address to receive the additional tokens.
+     * @param _tokenId The Id of the token.
      * @param _amount The amount to mint.
+     * @param _category Identifies the token's use case, such as auction or staking.
      */
     function mint(
-        uint256 _tokenId,
         address _to,
-        uint256 _amount
+        uint256 _tokenId,
+        uint256 _amount,
+        bytes32 _category
     )
         external
         override
@@ -119,12 +174,14 @@ contract LandRockerERC1155 is ERC1155Supply, ERC2981, ILandRockerERC1155 {
     {
         // Mint the specified amount of tokens to the given address
         _mint(_to, _tokenId, _amount, "");
+
+        emit Token1155Distributed(_to, _tokenId, _amount,_category);
     }
 
     /**
      * @dev Burn tokens held by a specific address.
      * @param _from Address from which to burn tokens.
-     * @param _tokenId The ID of the token.
+     * @param _tokenId The Id of the token.
      * @param _amount The amount to burn.
      */
     function burn(
@@ -138,31 +195,28 @@ contract LandRockerERC1155 is ERC1155Supply, ERC2981, ILandRockerERC1155 {
         validAddress(_from)
         onlyValidAmount(_amount)
     {
-        uint256 userBalance = balanceOf(_from, _tokenId);
-        // Check if the user has enough tokens to burn
-        require(
-            userBalance >= _amount,
-            "LandRockerERC1155::Insufficient balance to burn"
-        );
         // Burn the specified amount of tokens
         _burn(_from, _tokenId, _amount);
+
         // Reset the token's royalty
         _resetTokenRoyalty(_tokenId);
     }
 
     /**
      * @dev Set the base URI for token metadata.
-     * @param baseURI_ The new base URI.
+     * @param _baseURI The new base URI.
      */
-    function setBaseURI(string memory baseURI_) external override onlyAdmin {
+    function setBaseURI(string memory _baseURI) external override onlyAdmin {
         // Check if the provided base URI is valid
         require(
-            bytes(baseURI_).length > 0,
-            "LandRockerERC1155::Base uri is invalid"
+            bytes(_baseURI).length > 0,
+            "LandRockerERC1155::Base URI is invalid"
         );
+
         // Set the new base URI
-        _setURI(baseURI_);
-        emit BaseUriSet(baseURI_);
+        _setURI(_baseURI);
+
+        emit BaseUriSet(_baseURI);
     }
 
     /**
@@ -174,9 +228,83 @@ contract LandRockerERC1155 is ERC1155Supply, ERC2981, ILandRockerERC1155 {
         address _receiver,
         uint96 _feeNumerator
     ) external override onlyAdmin {
-        // Set the default royalty parameters
+        require(_feeNumerator > 0, "LandRockerERC1155::Royalty fee is invalid");
+        require(
+            _receiver != address(0),
+            "LandRockerERC1155::Not valid address"
+        );
+
+        RoyaltyInfo memory royalty = _defaultRoyaltyInfo;
+
+        require(
+            _feeNumerator <= royalty.royaltyFraction,
+            "LandRockerERC1155::New default lower than previous"
+        );
+
+        // Call the internal function to set the default royalty
         _setDefaultRoyalty(_receiver, _feeNumerator);
+        // Emit an event to indicate the updated royalty details
         emit RoyaltySet(_receiver, _feeNumerator);
+    }
+
+    /**
+     * @dev Removes default royalty information.
+     */
+    function deleteDefaultRoyalty() external override onlyAdmin {
+        _deleteDefaultRoyalty();
+        // Emit an event to indicate the royalty details has been deleted
+        emit RoyaltyDeleted();
+    }
+
+    /**
+     * @dev set the amount of floor price for each token
+     * @param _tokenId The Id of the token.
+     * @param _floorPrice The amount to floor price.
+     */
+    function setFloorPrice(
+        uint256 _tokenId,
+        uint256 _floorPrice
+    )
+        external
+        override
+        onlyAdminOrApprovedContract
+        onlyValidAmount(_floorPrice)
+    {
+        floorPrices[_tokenId] = _floorPrice;
+        emit FloorPriceUpdated(_tokenId, _floorPrice);
+    }
+
+    /**
+     * @dev Mint some tokens to the to address - See {IERC1155-supportsInterface}.
+     * @param to Address to mint the token to.
+     * @param _tokenIds  The Ids being minted.
+     * @param  amounts  Amount of tokens to mint given Id.
+     * @param data Additional field to pass data to function.
+     */
+    function mintBatch(
+        address to,
+        uint256[] memory _tokenIds,
+        uint256[] memory amounts,
+        bytes memory data
+    ) public {
+        _mintBatch(to, _tokenIds, amounts, data);
+    }
+
+    /**
+     * @dev See {IERC1155-safeBatchTransferFrom}.
+     */
+    function safeBatchTransferFrom(
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory values,
+        bytes memory data
+    ) public virtual override(IERC1155, ERC1155) {
+        address sender = _msgSender();
+        if (from != sender && !isApprovedForAll(from, sender)) {
+            revert ERC1155MissingApprovalForAll(sender, from);
+        }
+        _safeBatchTransferFrom(from, to, ids, values, data);
     }
 
     /**
@@ -184,15 +312,21 @@ contract LandRockerERC1155 is ERC1155Supply, ERC2981, ILandRockerERC1155 {
      */
     function supportsInterface(
         bytes4 interfaceId
-    ) public view virtual override(ERC2981, ERC1155, IERC165) returns (bool) {
+    )
+        public
+        view
+        virtual
+        override(LandRockerERC2981, ERC1155, IERC165)
+        returns (bool)
+    {
         return
-            ERC2981.supportsInterface(interfaceId) ||
+            LandRockerERC2981.supportsInterface(interfaceId) ||
             ERC1155.supportsInterface(interfaceId);
     }
 
     /**
-     * @dev Check if a token with a given ID exists.
-     * @param _tokenId The ID of the token.
+     * @dev Check if a token with a given Id exists.
+     * @param _tokenId The Id of the token.
      * @return true if the token exists, otherwise false.
      */
     function exists(
@@ -208,12 +342,12 @@ contract LandRockerERC1155 is ERC1155Supply, ERC2981, ILandRockerERC1155 {
     }
 
     /**
-     * @dev Get the URI for a given token ID.
-     * @param tokenId The ID of the token.
+     * @dev Get the URI for a given token Id.
+     * @param _tokenId The Id of the token.
      * @return The URI string.
      */
     function uri(
-        uint256 tokenId
+        uint256 _tokenId
     )
         public
         view
@@ -223,8 +357,27 @@ contract LandRockerERC1155 is ERC1155Supply, ERC2981, ILandRockerERC1155 {
     {
         return
             string(
-                abi.encodePacked(super.uri(tokenId), Strings.toString(tokenId))
+                abi.encodePacked(
+                    super.uri(_tokenId),
+                    Strings.toString(_tokenId)
+                )
             );
+    }
+
+    /**
+     * @dev Returns the name of the contract.
+     * @return The contract's name.
+     */
+    function name() public view virtual override returns (string memory) {
+        return tokenName;
+    }
+
+    /**
+     * @dev Returns the symbol of the contract.
+     * @return The contract's symbol.
+     */
+    function symbol() public view virtual override returns (string memory) {
+        return tokenSymbol;
     }
 
     /**
@@ -232,7 +385,7 @@ contract LandRockerERC1155 is ERC1155Supply, ERC2981, ILandRockerERC1155 {
      * @param operator The address that initiates the transfer.
      * @param from The address from which tokens are transferred.
      * @param to The address to which tokens are transferred.
-     * @param ids The IDs of the tokens being transferred.
+     * @param ids The Ids of the tokens being transferred.
      * @param amounts The amounts of tokens being transferred.
      * @param data Additional data.
      */

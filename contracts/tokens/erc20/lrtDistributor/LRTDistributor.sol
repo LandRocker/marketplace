@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.6;
 
 import {IAccessRestriction} from "../../../access/IAccessRestriction.sol";
@@ -23,12 +23,20 @@ contract LRTDistributor is ILRTDistributor {
     /**
      * @dev Reference to the access restriction contract
      */
-    IAccessRestriction public accessRestriction;
+    IAccessRestriction public immutable accessRestriction;
+
+    /**
+     * @dev Reverts if address is invalid
+     */
+    modifier validAddress(address _addr) {
+        require(_addr != address(0), "LRTDistributor::Not valid address");
+        _;
+    }
 
     /**
      * @dev Reference to the LRT token contract
      */
-    ILRT public token;
+    ILRT public immutable token;
 
     /**
      * @dev Modifier: Only accessible by administrators
@@ -85,7 +93,7 @@ contract LRTDistributor is ILRTDistributor {
         bytes32 poolName,
         uint256 _amount,
         address _to
-    ) external override onlyApprovedContract returns (bool) {
+    ) external override onlyApprovedContract validAddress(_to) returns (bool) {
         _distribute(poolName, _amount, _to);
 
         emit TokenDistributed(poolName, _amount, _to);
@@ -98,10 +106,15 @@ contract LRTDistributor is ILRTDistributor {
      * @param _to Recipient address
      * @param _amount Amount of tokens to swap
      */
-    function swap(address _to, uint256 _amount) external override onlyScript {
+    function swap(
+        address _to,
+        uint256 _amount
+    ) external override onlyScript validAddress(_to) returns (bool) {
         _distribute(bytes32("Game"), _amount, _to);
 
         emit TokenSwapped(_to, _amount);
+
+        return true;
     }
 
     /**
@@ -133,6 +146,11 @@ contract LRTDistributor is ILRTDistributor {
         require(
             _amount + usedLiquidity[poolName] <= poolLiquidity[poolName],
             "LRTDistributor::The pool has not enough balance"
+        );
+
+        require(
+            _to != address(this),
+            "LRTDistributor::LRT cannot transfer to distributor"
         );
 
         usedLiquidity[poolName] += _amount;

@@ -2,8 +2,7 @@ const { ethers } = require("hardhat");
 const deploy_access_restriction = require("./deploy_scripts/deploy_access_restriction");
 
 let ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"));
-let FACTORY_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("FACTORY_ROLE"));
-
+ 
 let APPROVED_CONTRACT_ROLE = ethers.utils.keccak256(
   ethers.utils.toUtf8Bytes("APPROVED_CONTRACT_ROLE")
 );
@@ -13,7 +12,8 @@ let SCRIPT_ROLE = ethers.utils.keccak256(
 
 let DISTRIBUTOR_ROLE = ethers.utils.keccak256(
   ethers.utils.toUtf8Bytes("DISTRIBUTOR_ROLE")
-);
+); 
+
 let VESTING_MANAGER_ROLE = ethers.utils.keccak256(
   ethers.utils.toUtf8Bytes("VESTING_MANAGER_ROLE")
 );
@@ -42,7 +42,6 @@ async function accessRestrictionFixture() {
     const arInstance = await deploy_access_restriction(owner)
 
     await arInstance.grantRole(ADMIN_ROLE, admin.address);
-    await arInstance.grantRole(FACTORY_ROLE, factory.address);
     await arInstance.grantRole(
       APPROVED_CONTRACT_ROLE,
       approvedContract.address
@@ -51,7 +50,8 @@ async function accessRestrictionFixture() {
 
     await arInstance.grantRole(SCRIPT_ROLE, script.address);
 
-    await arInstance.grantRole(DISTRIBUTOR_ROLE, distributor.address);
+    await arInstance.grantRole(DISTRIBUTOR_ROLE, distributor.address); 
+    
     await arInstance.grantRole(VESTING_MANAGER_ROLE, vesting_manager.address);
 
     AR_fixtureData = {

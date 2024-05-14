@@ -9,24 +9,19 @@ async function deploy_landRocker() {
   const landRockerInstance = await upgrades.deployProxy(
     LandRocker,
     [
-      ""
+      "0xf81787851069F394dFC744496BBaE29388502f17", //accessRestriction
     ],
     {
       kind: "uups",
-      initializer: "__LandRocker_init",
+      initializer: "initializeLandRocker",
     }
   );
-  
+
   await landRockerInstance.deployed();
 
-  console.log(
-    "LandRocker Contract deployed to:",
-    landRockerInstance.address
-  );
+  console.log("LandRocker Contract deployed to:", landRockerInstance.address);
 
-  console.log(
-    "---------------------------------------------------------",
-  );
+  console.log("---------------------------------------------------------");
 
   // await hre.run("laika-sync", {
   //   contract: "LandRocker",

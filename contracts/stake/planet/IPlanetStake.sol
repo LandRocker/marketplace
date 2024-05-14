@@ -1,136 +1,128 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.6;
 
-import {StakeLib} from "./../StakeLib.sol";
-
 /**
  * @title Planet Stake Interface
  * @dev This interface defines the methods and events for managing staking on the PlanetStake contract.
  */
 interface IPlanetStake {
     //Struct Representing staking data for a specific token.
-    struct PlanetStaking {
-        StakeLib.Staking stakeData; // Staking data structure from StakeLib
-        uint256 tokenId; // ID of the staked token
+    struct UserStake {
+        uint256 tokenId; // Id of the staked token
         uint256 quantity; // Quantity of tokens staked
+        uint256 claimedPlanets; // Quantity of claimed planet
+        uint256 claimable; // Amount that can be claimed
+        address staker; // Address of the staker
+    }
+
+    //Struct Representing planet data for a specific token.
+    struct Planet {
+        uint256 rewardAmount; // Amount of reward for mining on the planet
+        bool isWhiteListed; // Indicates whether the planet is in the whitelist
     }
 
     /**
      * @dev Emitted when a user stakes tokens.
      * @param staker The address of the staker.
-     * @param nftAddress The address of the NFT contract.
-     * @param tokenId The ID of the staked token.
-     * @param amount The amount of tokens staked.
-     * @param stakingDate The date of the staking operation.
+     * @param tokenId The Id of the staked token.
+     * @param quantity The amount of tokens staked.
      */
-    event Staked(
-        address staker,
-        address nftAddress,
-        uint256 tokenId,
-        uint256 amount,
-        uint64 stakingDate
-    );
+    event Staked(address staker, uint256 tokenId, uint256 quantity);
 
     /**
      * @dev Emitted when a user claims rewards.
-     * @param _staker The address of the staker.
-     * @param _tokenAddress The address of the token being claimed.
-     * @param _tokenId The ID of the staked token.
-     * @param _rewardAmount The amount of rewards claimed.
-     * @param lastClaimedDate The date of the last claimed rewards.
+     * @param staker The address of the staker.
+     * @param tokenId The Id of the staked token.
+     * @param rewardAmount The amount of rewards claimed.
      */
-    event Claimed(
-        address _staker,
-        address _tokenAddress,
-        uint256 _tokenId,
-        uint256 _rewardAmount,
-        uint64 lastClaimedDate
-    );
+    event Claimed(address staker, uint256 tokenId, uint256 rewardAmount);
+
+    /**
+     * @dev Emitted when a user claims rewards.
+     * @param staker The address of the staker.
+     * @param tokenId The Id of the staked token.
+     */
+    event ClaimableRewardsUpdated(address staker, uint256 tokenId);
 
     /**
      * @dev Emitted when a token is added to the Planet's white list.
-     * @param _tokenId The ID of the added token.
+     * @param tokenId The Id of the added token.
+     * @param rewardAmount The amount of rewards claimed.
+
      */
-    event PlanetWhiteListAdded(uint256 _tokenId);
+    event PlanetWhiteListAdded(uint256 tokenId, uint256 rewardAmount);
 
     /**
-     * @dev Emitted when the mining capacity of a planet is updated.
-     * @param tokenId The ID of the planet token.
-     * @param amount The updated mining capacity amount.
+     * @dev Initializes the PlanetStake contract.
+     * @param _landRockerERC1155 Address of the LandRockerERC1155 contract.
+     * @param _accessRestriction The address of the AccessRestriction contract.
+     * @param _lrt The address of the LRT contract.
      */
-    event PlanetMiningCapacityUpdated(uint256 tokenId, uint256 amount);
+    function initializePlanetStake(
+        address _landRockerERC1155,
+        address _accessRestriction,
+        address _lrt
+    ) external;
 
     /**
      * @dev Stakes a specific token.
-     * @param _tokenId The ID of the token to stake.
+     * @param _tokenId The Id of the token to stake.
+     * @param _quantity The quantity of tokens staked.
      */
-    function stake(uint256 _tokenId) external;
+    function stake(uint256 _tokenId, uint256 _quantity) external;
 
     /**
      * @dev Claims rewards for a staked token.
-     * @param _tokenId The ID of the staked token.
-     * @param _rewardAmount The amount of rewards to claim.
-     * @param _staker The address of the staker.
-     * @param _userMiningCount The count of mining performed by the user.
+     * @param _tokenId The Id of the staked token.
      */
-    function claim(
-        uint256 _tokenId,
-        uint256 _rewardAmount,
-        address _staker,
-        uint256 _userMiningCount
-    ) external;
+    function claim(uint256 _tokenId) external;
 
     /**
-     * @dev Sets the mining capacity of a planet.
-     * @param _tokenId The ID of the planet token.
-     * @param _amount The new mining capacity amount.
+     * @dev Makes the rewards claimable for a specific staker and token.
+     * @param _staker The address of the staker.
+     * @param _tokenId The ID of the token for which rewards are being made claimable.
      */
-    function setPlanetMiningCapacity(
-        uint256 _tokenId,
-        uint256 _amount
-    ) external;
+    function makeRewardsClaimable(address _staker, uint256 _tokenId) external;
 
     /**
      * @dev Adds a token to the Planet's white list.
-     * @param _tokenId The ID of the token to add.
+     * @param _tokenId The Id of the token to add.
+     * @param _rewardAmount The amount of rewards could be claimed.
      */
-    function setPlanetWhiteList(uint256 _tokenId) external;
-
-    /**
-     * @dev Returns the mining capacity of a planet.
-     * @param tokenId The ID of the planet token.
-     * @return The mining capacity amount.
-     */
-    function planetMiningCapacity(
-        uint256 tokenId
-    ) external view returns (uint256);
+    function addPlanet(uint256 _tokenId, uint256 _rewardAmount) external;
 
     /**
      * @dev Returns staking data for a user's stake.
-     * @param _user The user's address.
-     * @param _collection The address of the NFT collection.
-     * @param _tokenId The ID of the staked token.
-     * @return stakeData The staking data.
-     * @return tokenId The ID of the staked token.
+     
+     * @param _user The Id of the staked token.     
+     * @param _tokenId The Id of the staked token. 
+     * @return tokenId The Id of the staked token.
      * @return quantity The quantity of tokens staked.
+     * @return claimedPlanets The quantity of claimed planet.
+     * @return claimable
+     * @return staker The user's address.
      */
     function userStakes(
         address _user,
-        address _collection,
         uint256 _tokenId
     )
         external
         view
         returns (
-            StakeLib.Staking memory stakeData,
             uint256 tokenId,
-            uint256 quantity
+            uint256 quantity,
+            uint256 claimedPlanets,
+            uint256 claimable,
+            address staker
         );
 
     /**
-     * @dev Checks if a token is on the Planet's white list.
-     * @param tokenId The ID of the token to check.
-     * @return true if the token is on the white list, false otherwise.
+     * @dev Retrieves information about a planet.
+     * @param _tokenId The ID of the planet token.
+     * @return rewardAmount The amount of rewards associated with the planet.
+     * @return isActive A boolean indicating whether the planet is active or not.
      */
-    function whiteList(uint256 tokenId) external view returns (bool);
+    function planets(
+        uint256 _tokenId
+    ) external view returns (uint256 rewardAmount, bool isActive);
 }

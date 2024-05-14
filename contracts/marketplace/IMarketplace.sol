@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.6;
 
 /**
@@ -9,27 +9,27 @@ pragma solidity 0.8.6;
 interface IMarketplace {
     /**
      * @dev Emitted when a sell listing is canceled.
-     * @param _listID The ID of the sell listing that was canceled.
+     * @param listId The Id of the sell listing that was canceled.
      */
-    event SellCanceled(uint256 _listID);
+    event SellCanceled(uint256 listId);
     /**
      * @dev Emitted when funds are withdrawn from the contract.
-     * @param _amount The amount of funds withdrawn.
+     * @param amount The amount of funds withdrawn.
      * @param recipient The address that received the withdrawn funds.
      */
-    event Withdrawed(uint256 _amount, address recipient);
+    event Withdrawn(uint256 amount, address recipient);
 
     /**
      * @dev Allows the seller to cancel a sell listing.
-     * @param _listID The ID of the sell listing to be canceled.
+     * @param _listId The Id of the sell listing to be canceled.
      */
-    function cancelSell(uint256 _listID) external;
+    function cancelSell(uint256 _listId) external;
 
     /**
      * @dev Allows a buyer to purchase an item from the marketplace.
-     * @param _listID The ID of the sell listing to be purchased.
+     * @param _listId The Id of the sell listing to be purchased.
      */
-    function buyItem(uint256 _listID) external;
+    function buyItem(uint256 _listId) external;
 
     /**
      * @dev Allows the contract owner to withdraw funds from the contract.

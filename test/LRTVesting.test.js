@@ -45,9 +45,9 @@ describe("LRTٰVesting contract", function () {
   describe("create vesting plan", function () {
     it("should create a vesting plan", async () => {
       // set up the vesting plan parameters
-      const startDate = Number(
-        await Helper.timeInitial(TimeEnumes.seconds, 60)
-      ); // start the vesting in 1 minute from now
+      const startDate =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 1));
+      // start the vesting in 1 minute from now
       const cliff = await Helper.convertToSeconds("days", 1); // 1 day cliff86400;
       const duration = await Helper.convertToSeconds("weeks", 1); // 1 week vesting period
       const revocable = true;
@@ -92,9 +92,8 @@ describe("LRTٰVesting contract", function () {
 
     it("should revert if the cliff is greater than the duration", async () => {
       // set up the vesting plan parameters
-      const startDate = Number(
-        await Helper.timeInitial(TimeEnumes.seconds, 60)
-      ); // start the vesting in 1 minute from now
+      const startDate =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 1));
       const cliff = await Helper.convertToSeconds("weeks", 1); // 1 week cliff
       const duration = await Helper.convertToSeconds("days", 1); // 1 day vesting period
       const revocable = true;
@@ -119,9 +118,8 @@ describe("LRTٰVesting contract", function () {
 
     it("should revert if the duration is not set", async () => {
       // set up the vesting plan parameters
-      const startDate = Number(
-        await Helper.timeInitial(TimeEnumes.seconds, 60)
-      ); // start the vesting in 1 minute from now
+      const startDate =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 1));
       const cliff = 0; // 1 day cliff
       const duration = 0;
       const revocable = true;
@@ -146,9 +144,8 @@ describe("LRTٰVesting contract", function () {
 
     it("should revert if called by non-owner or non-admin", async () => {
       // set up the vesting plan parameters
-      const startDate = Number(
-        await Helper.timeInitial(TimeEnumes.seconds, 60)
-      ); // start the vesting in 1 minute from now
+      const startDate =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 1));
       const cliff = await Helper.convertToSeconds("days", 1); // 1 day cliff86400;
       const duration = await Helper.convertToSeconds("weeks", 1); // 1 week vesting period
       const revocable = true;
@@ -175,7 +172,8 @@ describe("LRTٰVesting contract", function () {
   describe("set debt for buying off-chain assets", function () {
     beforeEach(async function () {
       // set up the vesting plan1 parameters
-      const startDate1 = await time.latest();
+      const startDate1 =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 1));
       const cliff1 = await Helper.convertToSeconds("months", 3); // 3 month cliff
       const duration1 = await Helper.convertToSeconds("months", 48); // 48 month vesting period
       const revocable1 = true;
@@ -195,7 +193,8 @@ describe("LRTٰVesting contract", function () {
         );
 
       // set up the vesting plan2 parameters
-      const startDate2 = await time.latest(); // Start date 1 day from now
+      const startDate2 =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 1));
       const cliff2 = await Helper.convertToSeconds("months", 3); // 3 month cliff
       const duration2 = await Helper.convertToSeconds("months", 48); // 48 month vesting period
       const revocable2 = false;
@@ -219,7 +218,7 @@ describe("LRTٰVesting contract", function () {
       const planId2 = 1;
 
       const vestingStartDate1 =
-        (await time.latest()) + (await Helper.convertToSeconds("days", 1)); // Start date 1 day from now
+        (await time.latest()) + (await Helper.convertToSeconds("days", 2)); // Start date 1 day from now
       await lrtVestingInstance
         .connect(admin)
         .createVesting(
@@ -245,7 +244,7 @@ describe("LRTٰVesting contract", function () {
       //create vesting3 schedules addr1
       const vestingAmount3 = ethers.utils.parseUnits("10");
       const vestingStartDate3 =
-        (await time.latest()) + (await Helper.convertToSeconds("days", 2));
+        (await time.latest()) + (await Helper.convertToSeconds("days", 3));
       await lrtVestingInstance
         .connect(admin)
         .createVesting(
@@ -350,13 +349,13 @@ describe("LRTٰVesting contract", function () {
   describe("create vesting schedule for a user", function () {
     beforeEach(async function () {
       // set up the vesting plan parameters
-      const startDate = Number(
-        await Helper.timeInitial(TimeEnumes.seconds, 60)
-      ); // start the vesting in 1 minute from now
+      const startDate =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 1));
       const cliff = await Helper.convertToSeconds("days", 1); // 1 day cliff86400;
       const duration = await Helper.convertToSeconds("weeks", 1); // 1 week vesting period
       const revocable = true;
       const poolName = ethers.utils.formatBytes32String("Sale");
+
       const initialReleasePercentage = 5000;
 
       // create the vesting plan
@@ -375,12 +374,15 @@ describe("LRTٰVesting contract", function () {
     it("should create a vesting schedule for a user", async function () {
       const amount = ethers.utils.parseUnits("10");
       const planId = 0;
-      const startDate = Number(
-        await Helper.timeInitial(
-          TimeEnumes.seconds,
-          await Helper.convertToSeconds("days", 1)
-        )
-      ); // Start date 1 day from now
+      const startDate =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 1));
+
+      // Number(
+      //   await Helper.timeInitial(
+      //     TimeEnumes.seconds,
+      //     await Helper.convertToSeconds("days", 2)
+      //   )
+      // ); // Start date 1 day from now
       const tx = await lrtVestingInstance
         .connect(admin)
         .createVesting(addr1.address, startDate, amount, planId);
@@ -425,12 +427,8 @@ describe("LRTٰVesting contract", function () {
     it("should revert if plan does not exist", async function () {
       const amount = ethers.utils.parseEther("10");
       const planId = 2;
-      const startDate = Number(
-        await Helper.timeInitial(
-          TimeEnumes.seconds,
-          await Helper.convertToSeconds("days", 1)
-        )
-      ); // Start date 1 day from now
+      const startDate =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 2));
       await expect(
         lrtVestingInstance.connect(admin).createVesting(
           addr1.address,
@@ -444,12 +442,8 @@ describe("LRTٰVesting contract", function () {
     it("should revert if amount is too low", async function () {
       const amount = ethers.utils.parseEther("0");
       const planId = 0;
-      const startDate = Number(
-        await Helper.timeInitial(
-          TimeEnumes.seconds,
-          await Helper.convertToSeconds("days", 1)
-        )
-      ); // Start date 1 day from now
+      const startDate =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 2));
       await expect(
         lrtVestingInstance
           .connect(admin)
@@ -483,18 +477,14 @@ describe("LRTٰVesting contract", function () {
         lrtVestingInstance
           .connect(admin)
           .createVesting(addr1.address, startDate, amount, planId)
-      ).to.be.revertedWith(LRTVestingErrorMsg.INVALID_START_DATE);
+      ).to.be.revertedWith(LRTVestingErrorMsg.INVALID_START_DATE_VESTING);
     });
 
     it("should revert if called by non-approvedContract or non-admin", async function () {
       const amount = ethers.utils.parseEther("10");
       const planId = 0;
-      const startDate = Number(
-        await Helper.timeInitial(
-          TimeEnumes.seconds,
-          await Helper.convertToSeconds("days", 1)
-        )
-      ); // Start date 1 day from now
+      const startDate =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 2));
       await expect(
         lrtVestingInstance
           .connect(addr1)
@@ -508,9 +498,10 @@ describe("LRTٰVesting contract", function () {
   describe("claim", function () {
     beforeEach(async function () {
       // set up the vesting plan1 parameters
-      const startDate1 = await time.latest();
-      const cliff1 = await Helper.convertToSeconds("weeks", 1); //await Helper.convertToSeconds("months", 3); // 3 month cliff
-      const duration1 = await Helper.convertToSeconds("weeks", 10); // 48 month vesting period
+      const startDate1 =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 1));
+      const cliff1 = await Helper.convertToSeconds("months", 3); // 3 month cliff
+      const duration1 = await Helper.convertToSeconds("months", 48); // 48 month vesting period
       const revocable1 = true;
       const poolName1 = ethers.utils.formatBytes32String("Sale");
       const initialReleasePercentage = 1000; //5000;
@@ -528,7 +519,8 @@ describe("LRTٰVesting contract", function () {
         );
 
       // set up the vesting plan2 parameters
-      const startDate2 = await time.latest(); // Start date 1 day from now
+      const startDate2 =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 1)); // Start date 1 day from now
       const cliff2 = await Helper.convertToSeconds("months", 3); // 3 month cliff
       const duration2 = await Helper.convertToSeconds("months", 48); // 48 month vesting period
       const revocable2 = false;
@@ -547,26 +539,28 @@ describe("LRTٰVesting contract", function () {
         );
 
       //create vesting schedules addr1
-      const vestingAmount1 = ethers.utils.parseUnits("35"); //ethers.utils.parseUnits("10");
+      const vestingAmount1 = ethers.utils.parseUnits("10"); //ethers.utils.parseUnits("10");
       const planId1 = 0;
       const planId2 = 1;
 
       const vestingStartDate1 =
-        (await time.latest()) + (await Helper.convertToSeconds("days", 1)); // Start date 1 day from now
-      await lrtVestingInstance.connect(admin).createVesting(
-        addr1.address,
-        await time.latest(), //vestingStartDate1,
-        vestingAmount1,
-        planId1
-      );
+        (await time.latest()) + (await Helper.convertToSeconds("days", 2)); // Start date 1 day from now
+      await lrtVestingInstance
+        .connect(admin)
+        .createVesting(
+          addr1.address,
+          vestingStartDate1,
+          vestingAmount1,
+          planId1
+        );
 
       //create vesting2 schedules addr1
-      const vestingAmount2 = ethers.utils.parseUnits("35"); //ethers.utils.parseUnits("10");
+      const vestingAmount2 = ethers.utils.parseUnits("10"); //ethers.utils.parseUnits("10");
       const vestingStartDate2 =
         (await time.latest()) + (await Helper.convertToSeconds("days", 2)); // Start date 2 day from now
       await lrtVestingInstance.connect(admin).createVesting(
         addr1.address,
-        await time.latest(), //vestingStartDate2,
+        vestingStartDate2, //vestingStartDate2,
         vestingAmount2,
         planId1
       );
@@ -574,7 +568,7 @@ describe("LRTٰVesting contract", function () {
       //create vesting3 schedules addr1
       const vestingAmount3 = ethers.utils.parseUnits("10");
       const vestingStartDate3 =
-        (await time.latest()) + (await Helper.convertToSeconds("days", 2));
+        (await time.latest()) + (await Helper.convertToSeconds("days", 3));
       await lrtVestingInstance
         .connect(admin)
         .createVesting(
@@ -583,13 +577,6 @@ describe("LRTٰVesting contract", function () {
           vestingAmount3,
           planId2
         );
-
-      //set Debt
-      // const debt = ethers.utils.parseUnits("5");
-
-      // await lrtVestingInstance
-      //   .connect(approvedContract)
-      //   .setDebt(addr1.address, debt);
     });
 
     it("should allow claiming all tokens after the vesting period has ended", async function () {
@@ -640,7 +627,6 @@ describe("LRTٰVesting contract", function () {
       // Fast forward time to after the vesting period has ended
       const elapsedTime = await Helper.convertToSeconds("weeks", 4.5); //(await Helper.convertToSeconds("months", 48)) / 2;
       const planId = 0;
-      console.log("claimmmmmmm");
       await network.provider.send("evm_increaseTime", [elapsedTime]);
       await network.provider.send("evm_mine");
 
@@ -661,26 +647,104 @@ describe("LRTٰVesting contract", function () {
         1
       );
 
-      const initialRelease = beforeVestedBalance.mul(5000).div(10000);
-      // const vestedSeconds = (await time.latest()) - schedules.unlockDate;
-      // const claimableAmount =
-      //   (schedules.totalAmount).mul(vestedSeconds) / schedules.duration;
-      // console.log("vestedAmount0000000000000", claimableAmount);
-      // const releasableAmount = claimableAmount.sub(schedules.claimedAmount);
-
-      // let holderStat = await lrtVestingInstance.holdersStat(addr1.address);
-      // const debtAmount = holderStat.debt;
-      // expect(holderStat.claimedAmount).to.equal(claimedAmount.add(debtAmount));
       expect(claimedAmount).to.be.gt(0);
-
-      // //  expect(schedules.claimedAmount).to.equal(ethers.utils.parseUnits("10"));
-      // expect(await lrtVestingInstance.totalVestingAmount()).to.equal(
-      //   beforeVestedBalance.sub(claimedAmount)
-      // );
 
       await expect(tx)
         .to.emit(lrtVestingInstance, "Claimed")
         .withArgs(planId, claimedAmount, addr1.address);
+    });
+
+    it("should allow claiming a portion of tokens after unlock date with audit senario", async function () {
+      // set up the vesting plan1 parameters
+      const startDate1 =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 1));
+      const cliff1 = await Helper.convertToSeconds("weeks", 1); // 3 month cliff
+      const duration1 = await Helper.convertToSeconds("weeks", 10); // 48 month vesting period
+      const revocable1 = true;
+      const poolName1 = ethers.utils.formatBytes32String("Game");
+      const initialReleasePercentage = 1000;
+      // create the vesting plan
+      await lrtVestingInstance
+        .connect(admin)
+        .createVestingPlan(
+          startDate1,
+          cliff1,
+          duration1,
+          revocable1,
+          initialReleasePercentage,
+          poolName1
+        );
+      //create vesting schedules addr1
+      const vestingAmount1 = ethers.utils.parseUnits("10");
+      // const planId1 = 0;
+      const planId2 = 2;
+
+      const vestingStartDate1 =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 2)); // Start date 1 day from now
+      await lrtVestingInstance
+        .connect(admin)
+        .createVesting(
+          addr2.address,
+          vestingStartDate1,
+          vestingAmount1,
+          planId2
+        );
+      await lrtVestingInstance
+        .connect(admin)
+        .createVesting(
+          addr2.address,
+          vestingStartDate1,
+          vestingAmount1,
+          planId2
+        );
+      await lrtVestingInstance
+        .connect(approvedContract)
+        .setDebt(addr2.address, ethers.utils.parseUnits("10"));
+
+      // Fast forward time to after the vesting period has ended
+      const elapsedTime = await Helper.convertToSeconds("weeks", 4.5);
+      const planId = 2;
+
+      await network.provider.send("evm_increaseTime", [elapsedTime]);
+      await network.provider.send("evm_mine");
+
+      // Claim tokens and check the result
+      const tx = await lrtVestingInstance.connect(addr2).claim(planId);
+      const claimedAmount = await lrtInstance.balanceOf(addr2.address);
+
+      // Fast forward time to after the vesting period has ended
+      const elapsedTime3 = await Helper.convertToSeconds("weeks", 4.5);
+      await network.provider.send("evm_increaseTime", [elapsedTime3]);
+      await network.provider.send("evm_mine");
+
+      const tx2 = await lrtVestingInstance.connect(addr2).claim(planId);
+      const claimedAmount2 = await lrtInstance.balanceOf(addr2.address);
+
+      // Fast forward time to after the vesting period has ended
+      const elapsedTime4 = await Helper.convertToSeconds("weeks", 0.5);
+      await network.provider.send("evm_increaseTime", [elapsedTime3]);
+      await network.provider.send("evm_mine");
+
+      const tx3 = await lrtVestingInstance.connect(addr2).claim(planId);
+      const claimedAmount3 = await lrtInstance.balanceOf(addr2.address);
+
+      let schedules1 = await lrtVestingInstance.userVestings(
+        addr2.address,
+        planId,
+        0
+      );
+
+      let schedules2 = await lrtVestingInstance.userVestings(
+        addr2.address,
+        planId,
+        1
+      );
+
+      expect(claimedAmount).to.be.gt(0);
+
+      await expect(tx)
+        .to.emit(lrtVestingInstance, "Claimed")
+        .withArgs(planId, claimedAmount, addr2.address);
     });
 
     it("should allow claim initial release amount when current time between start date and unlock date", async function () {
@@ -717,8 +781,148 @@ describe("LRTٰVesting contract", function () {
       const initialRelease = totalVestingAmount.mul(5000).div(10000);
 
       let holderStat = await lrtVestingInstance.holdersStat(addr1.address);
-      expect(schedules1.claimedAmount).to.equal(ethers.utils.parseUnits("5"));
-      expect(schedules2.claimedAmount).to.equal(ethers.utils.parseUnits("5"));
+      expect(schedules1.claimedAmount).to.equal(ethers.utils.parseUnits("1"));
+      expect(schedules2.claimedAmount).to.equal(ethers.utils.parseUnits("1"));
+
+      const claimedAmount = await lrtInstance.balanceOf(addr1.address);
+
+      expect(holderStat.claimedAmount).to.equal(claimedAmount);
+
+      expect(Number(await lrtVestingInstance.totalVestingAmount())).to.equal(
+        beforeVestedBalance - claimedAmount
+      );
+
+      await expect(tx)
+        .to.emit(lrtVestingInstance, "Claimed")
+        .withArgs(planId, claimedAmount, addr1.address);
+    });
+
+    it("should allow claiming a portion of tokens after unlock date with audit senario (revoke a plan before setDept)", async function () {
+      // set up the vesting plan1 parameters
+      const startDate1 =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 1));
+      const cliff1 = await Helper.convertToSeconds("weeks", 1); // 3 month cliff
+      const duration1 = await Helper.convertToSeconds("weeks", 10); // 48 month vesting period
+      const revocable1 = true;
+      const poolName1 = ethers.utils.formatBytes32String("Game");
+      const initialReleasePercentage = 1000;
+      // create the vesting plan
+      await lrtVestingInstance
+        .connect(admin)
+        .createVestingPlan(
+          startDate1,
+          cliff1,
+          duration1,
+          revocable1,
+          initialReleasePercentage,
+          poolName1
+        );
+
+      await lrtVestingInstance
+        .connect(admin)
+        .createVestingPlan(
+          startDate1,
+          cliff1,
+          duration1,
+          revocable1,
+          initialReleasePercentage,
+          poolName1
+        );
+      //create vesting schedules addr1
+      const vestingAmount1 = ethers.utils.parseUnits("10");
+      // const planId1 = 0;
+      const planId2 = 2;
+
+      const vestingStartDate1 =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 2)); // Start date 1 day from now
+      await lrtVestingInstance
+        .connect(admin)
+        .createVesting(
+          addr2.address,
+          vestingStartDate1,
+          vestingAmount1,
+          planId2
+        );
+      await lrtVestingInstance
+        .connect(admin)
+        .createVesting(
+          addr2.address,
+          vestingStartDate1,
+          vestingAmount1,
+          planId2
+        );
+
+      await lrtVestingInstance
+        .connect(admin)
+        .createVesting(addr2.address, vestingStartDate1, vestingAmount1, 3);
+
+      // Fast forward time to after the vesting period has ended
+      const elapsedTime = await Helper.convertToSeconds("weeks", 4.5);
+      const planId = 2;
+
+      await network.provider.send("evm_increaseTime", [elapsedTime]);
+      await network.provider.send("evm_mine");
+
+      const holdersVesting = await lrtVestingInstance.userVestings(
+        addr2.address,
+        3,
+        0
+      );
+
+      await lrtVestingInstance.connect(admin).revoke(addr2.address, 3);
+      const claimedAmountAfterRevoke = await lrtInstance.balanceOf(
+        addr2.address
+      );
+
+      await lrtVestingInstance
+        .connect(approvedContract)
+        .setDebt(addr2.address, ethers.utils.parseUnits("25"));
+
+      await expect(
+        lrtVestingInstance.connect(addr2).claim(2)
+      ).to.be.revertedWith(LRTVestingErrorMsg.ZERO_CLAIMABLE_AMOUNT);
+
+      await expect(
+        lrtVestingInstance.connect(addr2).claim(3)
+      ).to.be.revertedWith(LRTVestingErrorMsg.REVOKED_BEFORE);
+    });
+
+    it("should allow claim initial release amount when current time between start date and unlock date", async function () {
+      // Fast forward time to after the vesting period has ended
+      const elapsedTime = await Helper.convertToSeconds("months", 2);
+      const planId = 0;
+
+      await network.provider.send("evm_increaseTime", [elapsedTime]);
+      await network.provider.send("evm_mine");
+
+      const beforeVestedBalance = Number(
+        await lrtVestingInstance.totalVestingAmount()
+      );
+
+      // Claim tokens and check the result
+      const tx = await lrtVestingInstance.connect(addr1).claim(planId);
+      // const tx2 = await lrtVestingInstance.connect(addr1).claim(planId);
+
+      let schedules1 = await lrtVestingInstance.userVestings(
+        addr1.address,
+        planId,
+        0
+      );
+      let schedules2 = await lrtVestingInstance.userVestings(
+        addr1.address,
+        planId,
+        1
+      );
+
+      let totalVestingAmount = schedules1.totalAmount.add(
+        schedules2.totalAmount
+      );
+
+      const initialRelease = totalVestingAmount.mul(5000).div(10000);
+
+      let holderStat = await lrtVestingInstance.holdersStat(addr1.address);
+      expect(schedules1.claimedAmount).to.equal(ethers.utils.parseUnits("1"));
+      expect(schedules2.claimedAmount).to.equal(ethers.utils.parseUnits("1"));
 
       const claimedAmount = await lrtInstance.balanceOf(addr1.address);
 
@@ -756,7 +960,8 @@ describe("LRTٰVesting contract", function () {
   describe("revoke", function () {
     beforeEach(async function () {
       // set up the vesting plan1 parameters
-      const startDate1 = await time.latest();
+      const startDate1 =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 1));
       const cliff1 = await Helper.convertToSeconds("months", 3); // 3 month cliff
       const duration1 = await Helper.convertToSeconds("months", 48); // 48 month vesting period
       const revocable1 = true;
@@ -776,7 +981,8 @@ describe("LRTٰVesting contract", function () {
         );
 
       // set up the vesting plan2 parameters
-      const startDate2 = await time.latest(); // Start date 1 day from now
+      const startDate2 =
+        (await time.latest()) + (await Helper.convertToSeconds("days", 1));
       const cliff2 = await Helper.convertToSeconds("months", 3); // 3 month cliff
       const duration2 = await Helper.convertToSeconds("months", 48); // 48 month vesting period
       const revocable2 = false;
@@ -800,7 +1006,7 @@ describe("LRTٰVesting contract", function () {
       const planId2 = 1;
 
       const vestingStartDate1 =
-        (await time.latest()) + (await Helper.convertToSeconds("days", 1)); // Start date 1 day from now
+        (await time.latest()) + (await Helper.convertToSeconds("days", 2)); // Start date 1 day from now
       await lrtVestingInstance
         .connect(admin)
         .createVesting(

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0
 
 
 // MockReentrant.sol
@@ -13,7 +13,9 @@ contract MockReentrant {
 
     function maliciousFunction(address target) external payable {
         isReentrant = true;
-        target.call{value: msg.value}(abi.encodeWithSignature("buyTokenByNativeCoin(uint256)", 100));
+        (bool success, ) = target.call{value: msg.value}(abi.encodeWithSignature("buyTokenByNativeCoin(uint256)", 100));
+        require(success, "Low-level call failed"); // Add a require statement to check if the low-level call was successful
+        require(success, "Low-level call failed"); // Add a require statement to check if the low-level call was successful
         isReentrant = false;
         emit CallCompleted(); // Emit the event here
 

@@ -7,9 +7,9 @@ const deploy_lrt_distributor = require("./deploy_scripts/deploy_lrt_distributor"
 const deploy_lrt_vesting = require("./deploy_scripts/deploy_lrt_vesting");
 const deploy_landRockerERC1155 = require("./deploy_scripts/deploy_landRockerERC1155");
 const deploy_nonMinted1155Marketplace = require("./deploy_scripts/deploy_nonMinted1155Marketplace");
+const deploy_landRockerERC1155Factory = require("./deploy_scripts/deploy_landRockerERC1155Factory");
 
 let ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"));
-let FACTORY_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("FACTORY_ROLE"));
 let APPROVED_CONTRACT_ROLE = ethers.utils.keccak256(
   ethers.utils.toUtf8Bytes("APPROVED_CONTRACT_ROLE")
 );
@@ -20,13 +20,9 @@ let SCRIPT_ROLE = ethers.utils.keccak256(
 let DISTRIBUTOR_ROLE = ethers.utils.keccak256(
   ethers.utils.toUtf8Bytes("DISTRIBUTOR_ROLE")
 );
-let VESTING_MANAGER_ROLE = ethers.utils.keccak256(
-  ethers.utils.toUtf8Bytes("VESTING_MANAGER_ROLE")
-);
 
 let WERT_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("WERT_ROLE"));
 async function nonMinted1155MarketplaceFixture() {
-  
   const [
     owner,
     admin,
@@ -46,29 +42,81 @@ async function nonMinted1155MarketplaceFixture() {
   const arInstance = await deploy_access_restriction(owner);
 
   await arInstance.grantRole(ADMIN_ROLE, admin.address);
-  await arInstance.grantRole(FACTORY_ROLE, factory.address);
   await arInstance.grantRole(APPROVED_CONTRACT_ROLE, approvedContract.address);
   await arInstance.grantRole(WERT_ROLE, wert.address);
   await arInstance.grantRole(SCRIPT_ROLE, script.address);
   await arInstance.grantRole(DISTRIBUTOR_ROLE, distributor.address);
-  await arInstance.grantRole(VESTING_MANAGER_ROLE, vesting_manager.address);
- 
-  const landRockerERC1155Instance = await deploy_landRockerERC1155(arInstance,royaltyRecipient); 
+
+  const landRockerERC1155Instance = await deploy_landRockerERC1155();
+
   const lrtInstance = await deploy_lrt(arInstance);
-  const landRockerInstance = await deploy_landRocker(arInstance); 
-  const lrtDistributorInstance = await deploy_lrt_distributor(arInstance, lrtInstance);
-  const lrtVestingInstance = await deploy_lrt_vesting(lrtDistributorInstance, arInstance);
-
-  await landRockerInstance.connect(admin).setSystemFee(150);
-  await landRockerInstance.connect(admin).setTreasuryAddress(treasury.address);
-  await landRockerInstance.connect(admin).setTreasuryAddress1155(treasury.address);
-
-  const nonMinted1155MarketplaceInstance = await deploy_nonMinted1155Marketplace(
-    landRockerERC1155Instance,
+  const landRockerInstance = await deploy_landRocker(arInstance);
+  const lrtDistributorInstance = await deploy_lrt_distributor(
     arInstance,
-    lrtInstance,
-    landRockerInstance,
-    lrtVestingInstance
+    lrtInstance
+  );
+  const lrtVestingInstance = await deploy_lrt_vesting(
+    lrtDistributorInstance,
+    arInstance
+  );
+
+  await landRockerInstance.connect(admin).setSystemFee(1300);
+  await landRockerInstance.connect(admin).setTreasuryAddress(treasury.address);
+  await landRockerInstance
+    .connect(admin)
+    .setTreasuryAddress1155(treasury.address);
+
+  const landRockerERC1155FactoryInstance =
+    await deploy_landRockerERC1155Factory(arInstance);
+
+  await landRockerERC1155FactoryInstance
+    .connect(admin)
+    .setImplementationAddress(landRockerERC1155Instance.address);
+
+  await landRockerERC1155FactoryInstance
+    .connect(admin)
+    .createLandRockerERC1155(
+      "landRocker-nonMinted-1",
+      "LR1155-nonMinted-1",
+      royaltyRecipient.address,
+      200,
+      "https://srvs20.landrocker.io/game_service/bc/get/uniq/token/data?token_id="
+    );
+
+  await landRockerERC1155FactoryInstance
+    .connect(admin)
+    .createLandRockerERC1155(
+      "landRocker-nonMinted-2",
+      "LR1155-nonMinted-2",
+      royaltyRecipient.address,
+      200,
+      "https://srvs20.landrocker.io/game_service/bc/get/uniq/token/data?token_id="
+    );
+
+  const collection_one =
+    await landRockerERC1155FactoryInstance.landRockerERC1155Clones(0);
+
+  const collection_two =
+    await landRockerERC1155FactoryInstance.landRockerERC1155Clones(1);
+
+  const nonMinted1155MarketplaceInstance =
+    await deploy_nonMinted1155Marketplace(
+      arInstance,
+      lrtInstance,
+      landRockerInstance,
+      lrtVestingInstance
+    );
+
+  await arInstance.grantRole(
+    APPROVED_CONTRACT_ROLE,
+    nonMinted1155MarketplaceInstance.address
+  );
+
+  await arInstance.grantRole(DISTRIBUTOR_ROLE, lrtDistributorInstance.address);
+
+  await arInstance.grantRole(
+    APPROVED_CONTRACT_ROLE,
+    lrtVestingInstance.address
   );
 
   await arInstance.grantRole(
@@ -76,16 +124,22 @@ async function nonMinted1155MarketplaceFixture() {
     nonMinted1155MarketplaceInstance.address
   );
 
-  await arInstance.grantRole(
-    APPROVED_CONTRACT_ROLE,
-    lrtVestingInstance.address
-  );
+
+  await landRockerInstance
+    .connect(admin)
+    .setLandRockerCollection1155(collection_one, true);
+
+  await landRockerInstance
+    .connect(admin)
+    .setLandRockerCollection1155(collection_two, true);
 
   return {
+    landRockerERC1155FactoryInstance,
     nonMinted1155MarketplaceInstance,
     landRockerInstance,
     landRockerERC1155Instance,
     lrtInstance,
+    lrtDistributorInstance,
     arInstance,
     owner,
     admin,
@@ -99,9 +153,11 @@ async function nonMinted1155MarketplaceFixture() {
     royaltyRecipient,
     factory,
     lrtVestingInstance,
+    collection_one,
+    collection_two,
   };
 }
 
 module.exports = {
-  nonMinted1155MarketplaceFixture
+  nonMinted1155MarketplaceFixture,
 };

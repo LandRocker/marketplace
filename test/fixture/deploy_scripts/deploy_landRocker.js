@@ -12,7 +12,7 @@ async function deploy_landRocker(arInstance) {
     ],
     {
       kind: "uups",
-      initializer: "__LandRocker_init",
+      initializer: "initializeLandRocker",
     }
   );
  

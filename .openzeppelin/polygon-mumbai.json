@@ -1,0 +1,264 @@
+{
+  "manifestVersion": "3.2",
+  "proxies": [
+    {
+      "address": "0x2Df3e451e62B36cF3ce96025311cBb1D31379EaB",
+      "txHash": "0x334e333733e6593d8d9ef297b0dd37eaa6daae6cf3d8ca5626bb0b47ca57942d",
+      "kind": "uups"
+    }
+  ],
+  "impls": {
+    "05c863dc6e072ce15cd62444ad22eb55bbb2b14f0181236ca66b46f5bb50d9b0": {
+      "address": "0x26C299642349584895214E7E67178B13481Bd949",
+      "txHash": "0x6543800134a2cbe81d6b8bb6f80f877769a47b2f99e86ceddd22500859ba386a",
+      "layout": {
+        "solcVersion": "0.8.6",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:63",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:68"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ERC1967UpgradeUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/ERC1967/ERC1967UpgradeUpgradeable.sol:169"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "UUPSUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol:111"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:88"
+          },
+          {
+            "label": "_accessRestriction",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_contract(IAccessRestriction)2076",
+            "contract": "Marketplace",
+            "src": "contracts/marketplace/Marketplace.sol:28"
+          },
+          {
+            "label": "_lrt",
+            "offset": 0,
+            "slot": "152",
+            "type": "t_contract(ILRT)4282",
+            "contract": "Marketplace",
+            "src": "contracts/marketplace/Marketplace.sol:29"
+          },
+          {
+            "label": "_landrocker",
+            "offset": 0,
+            "slot": "153",
+            "type": "t_contract(ILandRocker)2999",
+            "contract": "Marketplace",
+            "src": "contracts/marketplace/Marketplace.sol:30"
+          },
+          {
+            "label": "landRockerERC721",
+            "offset": 0,
+            "slot": "154",
+            "type": "t_contract(ILandRockerERC721)4406",
+            "contract": "NonMinted721Marketplace",
+            "src": "contracts/marketplace/nonMinted721/NonMinted721Marketplace.sol:26"
+          },
+          {
+            "label": "landRockerERC721Factory",
+            "offset": 0,
+            "slot": "155",
+            "type": "t_contract(LandRockerERC721Factory)4632",
+            "contract": "NonMinted721Marketplace",
+            "src": "contracts/marketplace/nonMinted721/NonMinted721Marketplace.sol:27"
+          },
+          {
+            "label": "_lrtVesting",
+            "offset": 0,
+            "slot": "156",
+            "type": "t_contract(ILRTVesting)4842",
+            "contract": "NonMinted721Marketplace",
+            "src": "contracts/marketplace/nonMinted721/NonMinted721Marketplace.sol:28"
+          },
+          {
+            "label": "nonMinted721Sells",
+            "offset": 0,
+            "slot": "157",
+            "type": "t_mapping(t_uint256,t_struct(NonMinted721Sell)3433_storage)",
+            "contract": "NonMinted721Marketplace",
+            "src": "contracts/marketplace/nonMinted721/NonMinted721Marketplace.sol:31"
+          },
+          {
+            "label": "landrocker721Collections",
+            "offset": 0,
+            "slot": "158",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "NonMinted721Marketplace",
+            "src": "contracts/marketplace/nonMinted721/NonMinted721Marketplace.sol:33"
+          },
+          {
+            "label": "_sellIdCounter",
+            "offset": 0,
+            "slot": "159",
+            "type": "t_struct(Counter)1113_storage",
+            "contract": "NonMinted721Marketplace",
+            "src": "contracts/marketplace/nonMinted721/NonMinted721Marketplace.sol:35"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(IAccessRestriction)2076": {
+            "label": "contract IAccessRestriction",
+            "numberOfBytes": "20"
+          },
+          "t_contract(ILRT)4282": {
+            "label": "contract ILRT",
+            "numberOfBytes": "20"
+          },
+          "t_contract(ILRTVesting)4842": {
+            "label": "contract ILRTVesting",
+            "numberOfBytes": "20"
+          },
+          "t_contract(ILandRocker)2999": {
+            "label": "contract ILandRocker",
+            "numberOfBytes": "20"
+          },
+          "t_contract(ILandRockerERC721)4406": {
+            "label": "contract ILandRockerERC721",
+            "numberOfBytes": "20"
+          },
+          "t_contract(LandRockerERC721Factory)4632": {
+            "label": "contract LandRockerERC721Factory",
+            "numberOfBytes": "20"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(NonMinted721Sell)3433_storage)": {
+            "label": "mapping(uint256 => struct INonMinted721Marketplace.NonMinted721Sell)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(Counter)1113_storage": {
+            "label": "struct CountersUpgradeable.Counter",
+            "members": [
+              {
+                "label": "_value",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(NonMinted721Sell)3433_storage": {
+            "label": "struct INonMinted721Marketplace.NonMinted721Sell",
+            "members": [
+              {
+                "label": "sellData",
+                "type": "t_struct(Sell)3417_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "tokenId",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_struct(Sell)3417_storage": {
+            "label": "struct MarketPlaceLib.Sell",
+            "members": [
+              {
+                "label": "status",
+                "type": "t_uint8",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "expireDate",
+                "type": "t_uint64",
+                "offset": 1,
+                "slot": "0"
+              },
+              {
+                "label": "collection",
+                "type": "t_address",
+                "offset": 9,
+                "slot": "0"
+              },
+              {
+                "label": "price",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.6;
 
 /**
@@ -83,6 +83,18 @@ interface ILRTVesting {
      * @param dest Beneficiary
      */
     event DebtCreated(uint256 amount, address indexed dest);
+
+    /**
+     * @dev Emitted when debt is created
+     * @param planId Plan ID
+     * @param amount debt amount
+     * @param dest Beneficiary
+     */
+    event DebtCreatedInPlan(
+        uint256 planId,
+        uint256 amount,
+        address indexed dest
+    );
 
     /**
      * @dev Emitted when vesting created

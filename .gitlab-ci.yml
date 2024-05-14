@@ -1,0 +1,28 @@
+.pre:
+  stage: .pre
+  script:
+    - npm install
+  # rules:
+  #   - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+
+build:
+  stage: build
+  script:
+    - npx hardhat compile
+  # rules:
+  #   - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+
+test:
+  stage: test
+  script:
+    - npx hardhat test
+  # rules:
+  #   - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+
+# deploy:
+#   stage: deploy
+#   script:
+#     - echo "Deploying the application..."
+#     # Add your deployment commands here
+#   rules:
+#     - if: '$CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'

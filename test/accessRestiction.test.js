@@ -135,7 +135,7 @@ describe("AccessRestriction", function () {
       ).to.be.revertedWith(AccessErrorMsg.CALLER_NOT_VESTING_MANAGER);
     });
   });
-
+  
   describe("ifAdmin", () => {
     it("should return true if candidate address has admin role", async () => {
       await arInstance.connect(owner).ifAdmin(admin.address);

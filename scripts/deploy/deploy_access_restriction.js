@@ -11,9 +11,7 @@ async function deploy_access_restriction() {
   await arInstance.deployed();
 
   console.log("Access Restriction Contract deployed to:", arInstance.address);
-  console.log(
-    "---------------------------------------------------------",
-  );
+  console.log("---------------------------------------------------------");
   return arInstance.address;
 }
 

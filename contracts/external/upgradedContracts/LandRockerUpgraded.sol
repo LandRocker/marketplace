@@ -1,19 +1,22 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0
 
-pragma solidity ^0.8.6;
+pragma solidity 0.8.6;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
 import {IAccessRestriction} from "./../../access/IAccessRestriction.sol";
-import {ILandRocker} from "./../../landrocker/ILandRocker.sol";
+import {ILandRockerUpgraded} from "./ILandRockerUpgraded.sol";
 
-contract LandRockerUpgraded is ILandRocker, Initializable, UUPSUpgradeable {
+contract LandRockerUpgraded is Initializable, UUPSUpgradeable,ILandRockerUpgraded {
     IAccessRestriction public accessRestriction;
 
     uint256 public override systemFee;
     address public override treasury;
     address public override treasury721;
     address public override treasury1155;
+    string public override greeting;
+
     //two address for treasury
 
     modifier onlyOwner() {
@@ -31,25 +34,22 @@ contract LandRockerUpgraded is ILandRocker, Initializable, UUPSUpgradeable {
         _;
     }
 
-    // constructor(address accessRestriction_) {
-    //     _disableInitializers();
-    //     accessRestriction = IAccessRestriction(accessRestriction_);
-    //     systemFee = 250;
-    // }
+       /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
-string public greeting;
 
-    function __LandRockerUpgraded_init(
-        address accessRestriction_) public reinitializer(2) {
+
+    function initializeLandRocker(
+        address accessRestriction_,string memory _greeting) external override reinitializer(2) {
         __UUPSUpgradeable_init();
         accessRestriction = IAccessRestriction(accessRestriction_);
-        systemFee = 250;
+        systemFee = 1300;
+        greeting = _greeting;
     }
 
- function greetingNew() public pure returns (string memory) {
-        return "New Upgradeable World!";
-    }
-   
+ 
     function setSystemFee(uint256 _systemFee) external override onlyAdmin {
         require(_systemFee <= systemFee, "LandRocker::Invalid system fee");
         systemFee = _systemFee;

@@ -10,7 +10,7 @@ async function deploy_assetMarketplace(arInstance, lrtInstance, landRockerInstan
   ,
     {
       kind: "uups",
-      initializer: "__AssetMarketplace_init",
+      initializer: "initializeAssetMarketplace",
     }
   );
 

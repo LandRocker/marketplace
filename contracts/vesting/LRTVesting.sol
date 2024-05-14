@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.6;
 
 import {Counters} from "@openzeppelin/contracts/utils/Counters.sol";
@@ -8,8 +8,6 @@ import {ILRTDistributor} from "./../tokens/erc20/lrtDistributor/ILRTDistributor.
 import {IAccessRestriction} from "../access/IAccessRestriction.sol";
 import {ILRTVesting} from "./ILRTVesting.sol";
 import {ILRT} from "./../tokens/erc20/ILRT.sol";
-
-import "hardhat/console.sol";
 
 /**
  * @title LRTVesting
@@ -37,10 +35,10 @@ contract LRTVesting is ReentrancyGuard, ILRTVesting {
     mapping(address => mapping(uint256 => bool)) public hasRevoked;
 
     // LRT distributor reference
-    ILRTDistributor public lrtDistributor;
+    ILRTDistributor public immutable lrtDistributor;
 
     // Access control reference
-    IAccessRestriction public accessRestriction;
+    IAccessRestriction public immutable accessRestriction;
 
     // Counter for vesting plan IDs
     Counters.Counter private _planId;
@@ -120,6 +118,11 @@ contract LRTVesting is ReentrancyGuard, ILRTVesting {
         require(_cliff <= _duration, "LRTVesting::Cliff priod is invalid");
         require(_duration > 0, "LRTVesting::Duration is not seted");
 
+        require(
+            _startDate >= uint64(block.timestamp),
+            "LRTVesting::start date is not valid"
+        );
+
         // Create vesting plan
         VestingPlan memory plan = VestingPlan(
             _startDate,
@@ -179,14 +182,14 @@ contract LRTVesting is ReentrancyGuard, ILRTVesting {
         // Validate start date
         require(
             _startDate >= vestingPlan.startDate,
-            "LRTVesting::StartDate is not valid"
+            "LRTVesting::createVesting:StartDate is not valid"
         );
 
         // Create user vesting schedule
         UserVesting memory userVesting = UserVesting(
             _amount, // Total vesting amount
             0, // Initial claimed amount
-            _startDate, // End date
+            _startDate, // Start date
             _startDate + vestingPlan.cliff, // Unlock date
             _startDate + vestingPlan.duration, // End date
             _beneficiary // the beneficiary address
@@ -283,29 +286,34 @@ contract LRTVesting is ReentrancyGuard, ILRTVesting {
 
         // Loop through vesting schedules
         uint256 remainingDebt = _debtAmount;
-
+        uint256 availableAmount = 0;
+        uint256 debtToClaim = 0;
         for (uint16 i = 0; i < _planId.current() && remainingDebt > 0; i++) {
-            UserVesting[] storage vestingList = userVestings[_beneficiary][i];
+            if (!hasRevoked[_beneficiary][i]) {
+                UserVesting[] storage vestingList = userVestings[_beneficiary][
+                    i
+                ];
+                for (
+                    uint16 j = 0;
+                    j < vestingList.length && remainingDebt > 0;
+                    j++
+                ) {
+                    UserVesting storage currentVesting = vestingList[j];
 
-            for (
-                uint16 j = 0;
-                j < vestingList.length && remainingDebt > 0;
-                j++
-            ) {
-                UserVesting storage currentVesting = vestingList[j];
+                    // Get available vesting amount
+                    availableAmount =
+                        currentVesting.totalAmount -
+                        currentVesting.claimedAmount;
 
-                // Get available vesting amount
-                uint256 availableAmount = currentVesting.totalAmount -
-                    currentVesting.claimedAmount;
+                    // Calculate debt to claim from this vesting
+                    debtToClaim = Math.min(remainingDebt, availableAmount);
+                    // Update claimed amount
+                    currentVesting.claimedAmount += debtToClaim;
+                    // Update remaining debt
+                    remainingDebt -= debtToClaim;
 
-                // Calculate debt to claim from this vesting
-                uint256 debtToClaim = Math.min(remainingDebt, availableAmount);
-
-                // Update claimed amount
-                currentVesting.claimedAmount += debtToClaim;
-
-                // Update remaining debt
-                remainingDebt -= debtToClaim;
+                    emit DebtCreatedInPlan(i, debtToClaim, _beneficiary);
+                }
             }
         }
 
@@ -377,7 +385,11 @@ contract LRTVesting is ReentrancyGuard, ILRTVesting {
 
         // Initialize claimable amount
         uint256 claimableAmount = 0;
-
+        uint256 availableAmount = 0;
+        uint256 releaseAmount = 0;
+        uint64 elapsedTime = 0;
+        uint64 unlockDuration = 0;
+        uint256 remainingAfterInitial = 0;
         // Loop through vesting schedules
         for (uint256 i = 0; i < vestingList.length; i++) {
             // Get reference to current vesting schedule
@@ -389,38 +401,43 @@ contract LRTVesting is ReentrancyGuard, ILRTVesting {
                 "LRTVesting::Only beneficiary can claim"
             );
 
-            // Initialize release amount
-            uint256 releaseAmount = 0;
+            if (currentVesting.claimedAmount == currentVesting.totalAmount) {
+                continue; // Skip fully claimed schedules
+            }
 
             // Check if fully vested
             if (currentTime >= currentVesting.endDate) {
                 releaseAmount = currentVesting.totalAmount;
             } else if (currentTime > currentVesting.unlockDate) {
                 // Calculate partial vesting amount
-                uint64 elapsedTime = currentTime - currentVesting.unlockDate;
-                console.log(elapsedTime, "elapsedTime");
-                uint64 unlockDuration = currentVesting.endDate -
+                elapsedTime = currentTime - currentVesting.unlockDate;
+                unlockDuration =
+                    currentVesting.endDate -
                     currentVesting.unlockDate;
-                console.log(unlockDuration, "unlockDuration");
-                uint256 initialRelease = (currentVesting.totalAmount *
-                    vestingPlan.initialReleasePercentage) / 10000;
-                uint256 remainingAfterInitial = currentVesting.totalAmount -
-                    initialRelease;
-                uint256 subsequentRelease = (remainingAfterInitial *
-                    elapsedTime) / unlockDuration;
 
-                releaseAmount = initialRelease + subsequentRelease;
+                releaseAmount =
+                    (currentVesting.totalAmount *
+                        vestingPlan.initialReleasePercentage) /
+                    10000;
+
+                remainingAfterInitial =
+                    currentVesting.totalAmount -
+                    releaseAmount;
+                releaseAmount +=
+                    (remainingAfterInitial * elapsedTime) /
+                    unlockDuration;
             } else if (currentTime >= currentVesting.startDate) {
                 // Within cliff period
-
-                uint256 initialRelease = (currentVesting.totalAmount *
-                    vestingPlan.initialReleasePercentage) / 10000;
-                releaseAmount = initialRelease;
+                releaseAmount =
+                    (currentVesting.totalAmount *
+                        vestingPlan.initialReleasePercentage) /
+                    10000;
             }
 
             // Calculate available amount
-            uint256 availableAmount = releaseAmount -
-                currentVesting.claimedAmount;
+            availableAmount = releaseAmount > currentVesting.claimedAmount
+                ? releaseAmount - currentVesting.claimedAmount
+                : 0;
 
             // Add to claimable amount
             claimableAmount += availableAmount;

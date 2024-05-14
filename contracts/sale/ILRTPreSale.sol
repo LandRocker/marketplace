@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.6;
+pragma solidity 0.8.6;
 
 /**
  * @title IVesting interface
- * @dev Interface for the LRTPreSale contract
  */
 interface ILRTPreSale {
     /**
@@ -164,6 +163,7 @@ interface ILRTPreSale {
      * @dev Purchases LRT with native coins
      * @param _lrtAmount Amount of LRT to purchase
      */
+    // function buyTokenByNativeCoin(uint256 _lrtAmount) external payable;
     function buyTokenByNativeCoin(
         uint256 _lrtAmount,
         uint80 _roundID

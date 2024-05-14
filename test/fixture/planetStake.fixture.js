@@ -7,7 +7,6 @@ const deploy_lrt = require("./deploy_scripts/deploy_lrt");
 const deploy_lrt_distributor = require("./deploy_scripts/deploy_lrt_distributor");
 
 let ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"));
-let FACTORY_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("FACTORY_ROLE"));
 let APPROVED_CONTRACT_ROLE = ethers.utils.keccak256(
   ethers.utils.toUtf8Bytes("APPROVED_CONTRACT_ROLE")
 );
@@ -17,9 +16,6 @@ let SCRIPT_ROLE = ethers.utils.keccak256(
 
 let DISTRIBUTOR_ROLE = ethers.utils.keccak256(
   ethers.utils.toUtf8Bytes("DISTRIBUTOR_ROLE")
-);
-let VESTING_MANAGER_ROLE = ethers.utils.keccak256(
-  ethers.utils.toUtf8Bytes("VESTING_MANAGER_ROLE")
 );
 
 let WERT_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("WERT_ROLE"));
@@ -43,14 +39,13 @@ async function stakeFixture() {
   const arInstance = await deploy_access_restriction(owner);
 
   await arInstance.grantRole(ADMIN_ROLE, admin.address);
-  await arInstance.grantRole(FACTORY_ROLE, factory.address);
   await arInstance.grantRole(APPROVED_CONTRACT_ROLE, approvedContract.address);
   await arInstance.grantRole(WERT_ROLE, wert.address);
   await arInstance.grantRole(SCRIPT_ROLE, script.address);
   await arInstance.grantRole(DISTRIBUTOR_ROLE, distributor.address);
-  await arInstance.grantRole(VESTING_MANAGER_ROLE, vesting_manager.address);
 
   const lrtInstance = await deploy_lrt(arInstance);
+
   const lrtDistributorInstance = await deploy_lrt_distributor(
     arInstance,
     lrtInstance
@@ -63,7 +58,7 @@ async function stakeFixture() {
   const planetStakeInstance = await deploy_planetStake(
     landRockerERC1155Instance,
     arInstance,
-    lrtDistributorInstance
+    lrtInstance
   );
 
   await arInstance.grantRole(
@@ -71,10 +66,7 @@ async function stakeFixture() {
     planetStakeInstance.address
   );
 
-    await arInstance.grantRole(DISTRIBUTOR_ROLE, lrtDistributorInstance.address);
-
-
-
+  await arInstance.grantRole(DISTRIBUTOR_ROLE, lrtDistributorInstance.address);
 
   const tokenId = await landRockerERC1155Instance
     .connect(approvedContract)
@@ -88,11 +80,16 @@ async function stakeFixture() {
     .connect(approvedContract)
     .safeMint(addr1.address, 10);
 
-  await planetStakeInstance.connect(admin).setPlanetMiningCapacity(0, 20);
-  await planetStakeInstance.connect(admin).setPlanetMiningCapacity(1, 20);
+  // await planetStakeInstance
+  //   .connect(admin)
+  //   .addPlanet(0, ethers.utils.parseUnits("10"), true);
+  // await planetStakeInstance
+  //   .connect(admin)
+  //   .addPlanet(1, ethers.utils.parseUnits("10"), true);
 
-  await planetStakeInstance.connect(admin).setPlanetWhiteList(0);
-  await planetStakeInstance.connect(admin).setPlanetWhiteList(1);
+  await lrtInstance
+    .connect(distributor)
+    .transferToken(planetStakeInstance.address, ethers.utils.parseUnits("500"));
 
   return {
     planetStakeInstance,
@@ -100,7 +97,9 @@ async function stakeFixture() {
     lrtDistributorInstance,
     lrtInstance,
     arInstance,
+    approvedContract,
     admin,
+    distributor,
     script,
     addr1,
     addr2,
@@ -108,5 +107,5 @@ async function stakeFixture() {
 }
 
 module.exports = {
-  stakeFixture
+  stakeFixture,
 };

@@ -6,7 +6,6 @@ async function deploy_landRockerERC721Factory(arInstance) {
   const LandRockerERC721Factory = await ethers.getContractFactory("LandRockerERC721Factory");
   const landRockerERC721FactoryInstance = await LandRockerERC721Factory.deploy(arInstance.address);
   await landRockerERC721FactoryInstance.deployed();
-  console.log("deploying_landRockerERC721Factory");
   return landRockerERC721FactoryInstance;
 }
 

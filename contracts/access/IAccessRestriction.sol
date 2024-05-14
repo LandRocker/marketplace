@@ -5,7 +5,6 @@ import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol"
 
 /**
  * @title AccessRestriction interface
- * @dev Interface for the AccessRestriction contract.
  */
 interface IAccessRestriction is IAccessControl {
     /**
@@ -29,12 +28,6 @@ interface IAccessRestriction is IAccessControl {
      * @param _address Address to check
      */
     function ifAdmin(address _address) external view;
-
-    /**
-     * @dev Checks if given address has factory role
-     * @param _address Address to check
-     */
-    function ifFactory(address _address) external view;
 
     /**
      * @dev Checks if given address is admin or owner
@@ -61,13 +54,6 @@ interface IAccessRestriction is IAccessControl {
      * @return bool true if address has admin role
      */
     function isAdmin(address _address) external view returns (bool);
-
-    /**
-     * @dev Checks if given address has factory role
-     * @param _address Address to check
-     * @return bool true if address has factory role
-     */
-    function isFactory(address _address) external view returns (bool);
 
     /**
      * @dev Checks if given address is approved contract

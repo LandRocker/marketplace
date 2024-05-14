@@ -7,12 +7,7 @@ async function deploy_lr1155() {
   const LandRockerERC1155 = await ethers.getContractFactory(
     "LandRockerERC1155"
   );
-  const landRockerERC1155Instance = await LandRockerERC1155.deploy(
-    "",
-    "",
-    1000,
-    ""
-  );
+  const landRockerERC1155Instance = await LandRockerERC1155.deploy();
   await landRockerERC1155Instance.deployed();
 
   console.log(
@@ -22,6 +17,10 @@ async function deploy_lr1155() {
 
   console.log("---------------------------------------------------------");
 
+  // await hre.run("laika-sync", {
+  //   contract: "LRTPreSale",
+  //   address: lrtPreSaleInstance.address,
+  // });
 
   return landRockerERC1155Instance.address;
 }

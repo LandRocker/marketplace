@@ -22,7 +22,6 @@ describe("LRT contract", function () {
         .connect(distributor)
         .transferToken(addr1.address, 100);
       expect(await lrtInstance.balanceOf(addr1.address)).to.equal(100);
-     
 
       await expect(tx)
         .to.emit(lrtInstance, "Transfer")
@@ -35,7 +34,7 @@ describe("LRT contract", function () {
       ).to.be.revertedWith(AccessErrorMsg.CALLER_NOT_DISTRIBUTOR);
     });
 
-     it("should not allow to transfer token when caller is not distributor", async function () {
+    it("should not allow to transfer token when caller is not distributor", async function () {
       await expect(
         lrtInstance.connect(distributor).transferToken(owner.address, 100)
       ).to.be.revertedWith(LRTErrorMsg.INVALID_DEST);

@@ -9,7 +9,6 @@ const deploy_assetMarketplace = require("./deploy_scripts/deploy_assetMarketplac
 
 
 let ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"));
-let FACTORY_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("FACTORY_ROLE"));
 let APPROVED_CONTRACT_ROLE = ethers.utils.keccak256(
   ethers.utils.toUtf8Bytes("APPROVED_CONTRACT_ROLE")
 );
@@ -19,9 +18,6 @@ let SCRIPT_ROLE = ethers.utils.keccak256(
 
 let DISTRIBUTOR_ROLE = ethers.utils.keccak256(
   ethers.utils.toUtf8Bytes("DISTRIBUTOR_ROLE")
-);
-let VESTING_MANAGER_ROLE = ethers.utils.keccak256(
-  ethers.utils.toUtf8Bytes("VESTING_MANAGER_ROLE")
 );
 
 let WERT_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("WERT_ROLE"));
@@ -47,19 +43,17 @@ async function assetMarketplaceFixture() {
   const arInstance = await deploy_access_restriction(owner);
 
   await arInstance.grantRole(ADMIN_ROLE, admin.address);
-  await arInstance.grantRole(FACTORY_ROLE, factory.address);
   await arInstance.grantRole(APPROVED_CONTRACT_ROLE, approvedContract.address);
   await arInstance.grantRole(WERT_ROLE, wert.address);
   await arInstance.grantRole(SCRIPT_ROLE, script.address);
   await arInstance.grantRole(DISTRIBUTOR_ROLE, distributor.address);
-  await arInstance.grantRole(VESTING_MANAGER_ROLE, vesting_manager.address);
 
   const lrtInstance = await deploy_lrt(arInstance);
   const lrtDistributorInstance = await deploy_lrt_distributor(arInstance, lrtInstance);
   const landRockerInstance = await deploy_landRocker(arInstance); 
   const lrtVestingInstance = await deploy_lrtVesting(lrtDistributorInstance, arInstance); 
 
-  await landRockerInstance.connect(admin).setSystemFee(150);
+  await landRockerInstance.connect(admin).setSystemFee(1300);
   await landRockerInstance.connect(admin).setTreasuryAddress(treasury.address);
   await landRockerInstance.connect(admin).setTreasuryAddress1155(treasury.address);
   await landRockerInstance.connect(admin).setTreasuryAddress721(treasury.address);

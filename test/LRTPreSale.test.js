@@ -74,7 +74,7 @@ describe("LRT preSale", function () {
 
     await lrtPreSaleInstance
       .connect(admin)
-      .setUserBalanceLimit(ethers.utils.parseUnits("250", 18));
+      .setUserBalanceLimit(ethers.utils.parseUnits("200", 18));
     //add investor
   });
 
@@ -440,7 +440,7 @@ describe("LRT preSale", function () {
         await lrtPreSaleInstance.userDailyPurchaseCount(addr2.address)
       ).to.equal(1);
     });
-   
+
     it("Should revert when LRT limit is exceeded", async function () {
       // Set up the test data and environment
       const lrtAmount = ethers.utils.parseUnits("1000", 18);
@@ -625,6 +625,49 @@ describe("LRT preSale", function () {
     it("Should revert when LRT amount is lower than minLrt per user", async function () {
       // Set up the test data and environment
       const lrtAmount = ethers.utils.parseUnits("5", 18);
+      const lrtPrice = await lrtPreSaleInstance.lrtPrice();
+
+      const discountPercentage = await lrtPreSaleInstance.discount();
+      const roundId = 123;
+      const mockPrice = ethers.utils.parseUnits("10", 8);
+      const zeroAddress = "0x0000000000000000000000000000000000000000";
+
+      await aggregatorInstance.setLatestRoundData(roundId, mockPrice, 0, 0, 0);
+
+      // Call the getRoundData() function
+      const [, price, , ,] = await aggregatorInstance.getRoundData(roundId);
+
+      let totalPay = 0;
+      let discountAmount = 0;
+
+      const requiredAmount = lrtAmount
+        .mul(lrtPrice)
+        .div(ethers.BigNumber.from("1000000000000000000"));
+
+      discountAmount = requiredAmount
+        .mul(discountPercentage)
+        .div(ethers.BigNumber.from("10000"));
+
+      if (await lrtPreSaleInstance.eligibleAddresses(addr2.address)) {
+        totalPay = requiredAmount.sub(discountAmount);
+      } else {
+        totalPay = requiredAmount;
+      }
+
+      const value = totalPay
+        .div(Number(price))
+        .mul(ethers.BigNumber.from("100000000"));
+
+      await expect(
+        lrtPreSaleInstance
+          .connect(addr1)
+          .buyTokenByNativeCoin(lrtAmount, roundId, { value: value })
+      ).to.be.revertedWith(SaleErrorMsg.TOO_LOW_AMOUNT);
+    });
+
+    it("Should revert when LRT amount is lower than minLrt per user", async function () {
+      // Set up the test data and environment
+      const lrtAmount = ethers.utils.parseUnits("0", 18);
       const lrtPrice = await lrtPreSaleInstance.lrtPrice();
 
       const discountPercentage = await lrtPreSaleInstance.discount();
@@ -2171,7 +2214,7 @@ describe("LRT preSale", function () {
       ).to.be.revertedWith(SaleErrorMsg.SALE_NOT_ACTIVE);
     });
 
-    it("Should revert when caller is not wert", async function () {
+    it("Should revert when caller is not WERT", async function () {
       // Set up the test data and environment
       const lrtAmount = ethers.utils.parseUnits("10", 18);
 
@@ -2203,9 +2246,8 @@ describe("LRT preSale", function () {
       ).to.be.revertedWith(AccessErrorMsg.PAUSEABLE_PAUSED);
     });
   });
-  describe("check some admin function", function () {
-   
 
+  describe("check some admin function", function () {
     it("Should revert set treasury address when address is not valid", async function () {
       await expect(
         lrtPreSaleInstance.connect(admin).setTreasuryAddress(treasury.address)
@@ -2223,7 +2265,6 @@ describe("LRT preSale", function () {
         lrtPreSaleInstance.connect(admin).setTreasuryAddress(zeroAddress)
       ).to.be.revertedWith(SaleErrorMsg.NOT_VALID_ADDRESS);
     });
-
 
     it("Should revert set payment token when caller is not admin", async function () {
       await expect(
@@ -2335,37 +2376,39 @@ describe("LRT preSale", function () {
       ).to.be.revertedWith(AccessErrorMsg.CALLER_NOT_ADMIN);
     });
 
-     it("should allow admin to set aggregator address", async function () {
-       const zeroAddress = "0x0000000000000000000000000000000000000000";
+    it("should allow admin to set aggregator address", async function () {
+      const zeroAddress = "0x0000000000000000000000000000000000000000";
 
-       const address = await lrtPreSaleInstance.priceFeeds(
-         Helper.stringToBytes16("MATIC")
-       );
-       expect(address).to.equal(aggregatorInstance.address);
-       await expect(
-         lrtPreSaleInstance
-           .connect(admin)
-           .setAggregator(
-             Helper.stringToBytes16("MATIC"),
-             aggregatorInstance.address
-           )
-       )
-         .to.emit(lrtPreSaleInstance, "AggregatorAddressSet")
-         .withArgs(Helper.stringToBytes16("MATIC"), aggregatorInstance.address);
+      const address = await lrtPreSaleInstance.priceFeeds(
+        Helper.stringToBytes16("MATIC")
+      );
+      expect(address).to.equal(aggregatorInstance.address);
+      await expect(
+        lrtPreSaleInstance
+          .connect(admin)
+          .setAggregator(
+            Helper.stringToBytes16("MATIC"),
+            aggregatorInstance.address
+          )
+      )
+        .to.emit(lrtPreSaleInstance, "AggregatorAddressSet")
+        .withArgs(Helper.stringToBytes16("MATIC"), aggregatorInstance.address);
 
-       await expect(
-         lrtPreSaleInstance
-           .connect(admin)
-           .setAggregator(Helper.stringToBytes16("MATIC"), zeroAddress)
-       ).to.be.revertedWith(SaleErrorMsg.NOT_VALID_ADDRESS);
+      await expect(
+        lrtPreSaleInstance
+          .connect(admin)
+          .setAggregator(Helper.stringToBytes16("MATIC"), zeroAddress)
+      ).to.be.revertedWith(SaleErrorMsg.NOT_VALID_ADDRESS);
 
-       await expect(
-         lrtPreSaleInstance
-           .connect(addr1)
-           .setAggregator(Helper.stringToBytes16("MATIC"), aggregatorInstance.address)
-       ).to.be.revertedWith(AccessErrorMsg.CALLER_NOT_ADMIN);
-     });
-
+      await expect(
+        lrtPreSaleInstance
+          .connect(addr1)
+          .setAggregator(
+            Helper.stringToBytes16("MATIC"),
+            aggregatorInstance.address
+          )
+      ).to.be.revertedWith(AccessErrorMsg.CALLER_NOT_ADMIN);
+    });
 
     it("should allow admin or script role to add investor as eligible address", async function () {
       const isEligible1 = await lrtPreSaleInstance.eligibleAddresses(
@@ -2379,15 +2422,15 @@ describe("LRT preSale", function () {
         .withArgs(addr1.address);
 
       const isEligible2 = await lrtPreSaleInstance.eligibleAddresses(
-          addr2.address
+        addr2.address
       );
       expect(isEligible2).to.equal(true);
       await expect(
-        lrtPreSaleInstance.connect(script).addToWhiteList(addr2.address)
+        lrtPreSaleInstance.connect(admin).addToWhiteList(addr2.address)
       )
-          .to.emit(lrtPreSaleInstance, "EligibleAddressAdded")
-          .withArgs(addr2.address); 
-        
+        .to.emit(lrtPreSaleInstance, "EligibleAddressAdded")
+        .withArgs(addr2.address);
+
       const zeroAddress = "0x0000000000000000000000000000000000000000";
 
       await expect(
@@ -2396,7 +2439,8 @@ describe("LRT preSale", function () {
 
       await expect(
         lrtPreSaleInstance.connect(addr1).addToWhiteList(addr2.address)
-      ).to.be.revertedWith(AccessErrorMsg.CALLER_NOT_ADMIN_OR_SCRIPT);
+      ).to.be.revertedWith(AccessErrorMsg.CALLER_NOT_ADMIN);
     });
   });
+  
 });
